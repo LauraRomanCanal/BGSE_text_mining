@@ -18,39 +18,47 @@ os.chdir('/home/euan/documents/text-mining/homework')
 '''
 QUESTION 1
 '''
+
 # Read in data
 # documents defined at the paragraph level
 data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
 speeches = data['speech']
 
-# Tokenize speeches
-tokenizer = RegexpTokenizer(r'\w+')
-sp_tkn = [tokenizer.tokenize(speech) for speech in speeches]
+def my_tokeniser(speeches):
+    # Tokenize speeches
+    tokenizer = RegexpTokenizer(r'\w+')
+    sp_tkn = [tokenizer.tokenize(speech) for speech in speeches]
+    return sp_tkn
 
-# Remove non-alphabetic tokens
-for i in range(len(sp_tkn)):
-    sp_tkn[i] = [j for j in sp_tkn[i] if j[0] in set(string.ascii_letters)]
+def remove_nonalph(sp_tkn):
+    # Remove non-alphabetic tokens
+    for i in range(len(sp_tkn)):
+        sp_tkn[i] = [j for j in sp_tkn[i] if j[0] in set(string.ascii_letters)]
+    return sp_tkn
 
-#for i in range(len(sp_tkn)):
-#    sp_tkn[i] = [''.join(x for x in par if x in string.ascii_letters) for par in sp_tkn[i]]
+def stopword_del(sp_tkn):
+    # Remove stopwords
+    stop = set(stopwords.words('english'))
+    for i in range(len(sp_tkn)):
+        sp_tkn[i] = [j.lower() for j in sp_tkn[i] if j.lower() not in stop]
+    return sp_tkn
 
-# Remove stopwords
-stop = set(stopwords.words('english'))
+def my_stem(sp_tkn):
+    # Stem words in documents
+    stemmer = porter.PorterStemmer()
+    stemmed = [[stemmer.stem(word) for word in doc] for doc in sp_tkn]
+    return stemmed
 
-for i in range(len(sp_tkn)):
-    sp_tkn[i] = [j.lower() for j in sp_tkn[i] if j.lower() not in stop]
+def data_processing(speeches):
+    # Put together all other steps of data processing
+    sp_tkn = my_tokeniser(speeches)
+    sp_tkn = remove_nonalph(sp_tkn)
+    stemmed = my_stem(sp_tkn)
+    return(stemmed)
 
-# Stem remaining words
-stemmer = porter.PorterStemmer()
+stemmed = data_processing(speeches)
 
-stemmed = [[stemmer.stem(word) for word in doc] for doc in sp_tkn]
-
-idx = [i for i, x in enumerate(stemmed) if len(x) == 0]
-data = data.drop(data.index[idx])
-speeches = speeches.drop(speeches.index[idx])
-stemmed = [i for i in stemmed if not i == []]
-
-# CALCULATING TF-IDF MATRIX
+# CALCULATING TF-IDF SCORES
 
 def get_vocab(stemmed_data):
     # extracts corpus vocabulary from list of documents
@@ -120,7 +128,8 @@ def make_TF_IDF(stemmed):
     return tf_idf
 
 tf_idf = make_TF_IDF(stemmed)
-#U, S, V = svd(tf_idf, full_matrices=False)
+
+U, S, V = svd(tf_idf, full_matrices=False)
 
 '''
 QUESTION 4
@@ -180,37 +189,3 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
     return [z_hat, rho_i, B_i, loglik_seq]
 
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
-
-data = stemmed
-k=3
-
-count_matrix = make_count(data)
-vocab = get_vocab(data)
-D = len(data)
-n = len(vocab)
-N_d = [len(x) for x in data]
-
-# Initialise params
-rho_i   = [1/k]*k
-B_i     = np.random.dirichlet([1]*n, size=k)
-loglik_seq = [MM_loglik(rho_i, B_i, count_matrix)]
-
-# E step
-z_hat   = E_step(rho_i, B_i, count_matrix)
-
-# M step
-rho_i   = rho_update(z_hat, count_matrix)
-B_i     = beta_update(z_hat,count_matrix, N_d)
-loglik_seq.append(MM_loglik(rho_i, B_i, count_matrix))
-B_i[0].argmin()
-
-B_i[0,358]
-
-z_hat[:,0].dot(count_matrix[:,358])
-count_matrix[:,358].shape
-vocab[358]
-idx = [i for i in range(len(stemmed)) if vocab[358] in set(stemmed[i])]
-
-stemmed[idx[0]]
-
-stemmed[358]
