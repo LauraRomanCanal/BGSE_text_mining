@@ -1,0 +1,218 @@
+import nltk
+import string
+import pandas as pd
+import numpy as np
+import pickle
+import os
+import matplotlib
+from matplotlib import pyplot as plt
+from nltk import tokenize
+from nltk.corpus import stopwords
+from nltk.stem import porter
+from numpy.linalg import svd
+from scipy.misc import logsumexp
+from nltk.tokenize import RegexpTokenizer
+
+os.chdir('/home/euan/documents/text-mining/homework')
+
+'''
+QUESTION 1
+'''
+# Read in data
+# documents defined at the paragraph level
+data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
+speeches = data['speech']
+
+# Tokenize speeches
+tokenizer = RegexpTokenizer(r'\w+')
+sp_tkn = [tokenizer.tokenize(speech) for speech in speeches]
+
+# Remove non-alphabetic tokens
+#for i in range(len(sp_tkn)):
+#    sp_tkn[i] = [j for j in sp_tkn[i] if j[0] in set(string.ascii_letters)]
+
+for i in range(len(sp_tkn)):
+    sp_tkn[i] = [''.join(x for x in par if x not in string.punctuation) for par in sp_tkn[i]]
+
+# Remove stopwords
+stop = set(stopwords.words('english'))
+
+for i in range(len(sp_tkn)):
+    sp_tkn[i] = [j.lower() for j in sp_tkn[i] if j.lower() not in stop]
+
+# Stem remaining words
+stemmer = porter.PorterStemmer()
+stemmed = []
+
+for i in range(len(sp_tkn)):
+    stemmed.append([stemmer.stem(word) for word in sp_tkn[i]])
+
+idx = [i for i, x in enumerate(stemmed) if len(x) == 0]
+data = data.drop(data.index[idx])
+speeches = speeches.drop(speeches.index[idx])
+stemmed = [i for i in stemmed if not i == []]
+
+# CALCULATING TF-IDF MATRIX
+
+def get_vocab(stemmed_data):
+    # extracts corpus vocabulary from list of documents
+    vocab = list(set().union(*stemmed_data))
+    return vocab
+
+def doc_count(stemmed,vocab):
+    # counts how many documents each word appears in
+    df = dict(zip(vocab,[0]*len(vocab)))
+    for i in range(len(stemmed)):
+        words = set(stemmed[i])
+        for j in words:
+            df[j] = df[j]+1
+    return df
+
+def make_IDF(stemmed,vocab):
+    # Calculates IDF factor for each word in vocabulary
+    D   = len(stemmed)
+    n   = len(get_vocab(stemmed))
+    df  = doc_count(stemmed,vocab)
+    IDF = [np.log(D/d) for d in df.values()]
+    IDF_dict = dict(zip(vocab,IDF))
+    return IDF_dict
+
+def make_count(stemmed):
+    vocab = get_vocab(stemmed)
+    D = len(stemmed)
+    n = len(vocab)
+    idx = dict(zip(vocab,range(len(vocab))))
+    count_matrix = np.ndarray(shape=(D,n))
+
+    for i in range(len(stemmed)):
+        for j in set(stemmed[i]):
+            count_matrix[i,idx[j]] = stemmed[i].count(j)
+    return count_matrix
+
+def corpus_tf_idf(stemmed):
+    # Calculate corpus-level TF-IDF scores
+    count_matrix = make_count(stemmed)
+    vocab = get_vocab(stemmed)
+    idf = list(make_IDF(stemmed, vocab).values())
+    tf = 1 +  np.log(np.sum(count_matrix, axis = 0))
+    tf_idf = tf * idf
+    return tf_idf
+
+tf_idf_scores = corpus_tf_idf(stemmed)
+tf_idf_scores.sort()
+
+plt.plot(tf_idf_scores)
+plt.show()
+
+'''
+QUESTION 3
+'''
+
+def make_TF_IDF(stemmed):
+    # Calculates TF-IDF matrix
+    vocab = get_vocab(stemmed)
+    D = len(stemmed)
+    idx = dict(zip(vocab,range(len(vocab))))
+    IDF_dict = make_IDF(stemmed,vocab)
+    tf_idf = np.ndarray(shape=(D,len(vocab)))
+
+    for i in range(len(stemmed)):
+        for j in set(stemmed[i]):
+            tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
+    return tf_idf
+
+tf_idf = make_TF_IDF(stemmed)
+#U, S, V = svd(tf_idf, full_matrices=False)
+
+'''
+QUESTION 4
+'''
+
+def E_step(rho_i, B_i, count_matrix):
+    L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
+    z_hat = np.exp((L.T - logsumexp(L, axis=1)).T)
+    return z_hat
+
+def rho_update(z_hat, count_matrix):
+    D = np.shape(count_matrix)[0]
+    rho_i = np.sum(z_hat, axis = 0) / D
+    return rho_i
+
+def beta_update(z_hat, count_matrix, N_d):
+    lower_bound =  np.finfo('float').max**(-1)
+    B_i = (count_matrix.T.dot(z_hat) / np.sum(z_hat.T * N_d, axis=1)).T
+    B_i[B_i == 0.0] = lower_bound
+    return B_i
+
+def MM_loglik(rho_i, B_i, count_matrix):
+    # Calculate log-likelihood of Multinomial Mixture Model
+    L =  np.exp(np.log(rho_i) + count_matrix.dot(np.log(B_i.T)))
+    ll = np.sum(L, axis = 1)
+    if ll.min() == 0.0:
+        ll[ll==0.0] = np.finfo('float').max**(-1)
+    ll = np.sum(np.log(ll))
+    return(ll)
+
+def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
+    count_matrix = make_count(data)
+    vocab = get_vocab(data)
+    D = len(data)
+    n = len(vocab)
+    N_d = [len(x) for x in data]
+
+    # Initialise params
+    rho_i   = [1/k]*k
+    B_i     = np.random.dirichlet([1]*n, size=k)
+    loglik_seq = [MM_loglik(rho_i, B_i, count_matrix)]
+
+    for i in range(max_iters):
+
+        # E step
+        z_hat   = E_step(rho_i, B_i, count_matrix)
+
+        # M step
+        rho_i   = rho_update(z_hat, count_matrix)
+        B_i     = beta_update(z_hat,count_matrix, N_d)
+        loglik_seq.append(MM_loglik(rho_i, B_i, count_matrix))
+
+        # Early stopping criterion
+        if (loglik_seq[len(loglik_seq) - 1] - loglik_seq[len(loglik_seq) - 2]) <= eps:
+            return [z_hat, rho_i, B_i, loglik_seq]
+
+    return [z_hat, rho_i, B_i, loglik_seq]
+
+z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
+
+data = stemmed
+k=3
+
+count_matrix = make_count(data)
+vocab = get_vocab(data)
+D = len(data)
+n = len(vocab)
+N_d = [len(x) for x in data]
+
+# Initialise params
+rho_i   = [1/k]*k
+B_i     = np.random.dirichlet([1]*n, size=k)
+loglik_seq = [MM_loglik(rho_i, B_i, count_matrix)]
+
+# E step
+z_hat   = E_step(rho_i, B_i, count_matrix)
+
+# M step
+rho_i   = rho_update(z_hat, count_matrix)
+B_i     = beta_update(z_hat,count_matrix, N_d)
+loglik_seq.append(MM_loglik(rho_i, B_i, count_matrix))
+B_i[0].argmin()
+
+B_i[0,358]
+
+z_hat[:,0].dot(count_matrix[:,358])
+count_matrix[:,358].shape
+vocab[358]
+idx = [i for i in range(len(stemmed)) if vocab[358] in set(stemmed[i])]
+
+stemmed[idx[0]]
+
+stemmed[358]
