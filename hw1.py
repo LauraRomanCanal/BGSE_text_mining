@@ -28,11 +28,11 @@ tokenizer = RegexpTokenizer(r'\w+')
 sp_tkn = [tokenizer.tokenize(speech) for speech in speeches]
 
 # Remove non-alphabetic tokens
-#for i in range(len(sp_tkn)):
-#    sp_tkn[i] = [j for j in sp_tkn[i] if j[0] in set(string.ascii_letters)]
-
 for i in range(len(sp_tkn)):
-    sp_tkn[i] = [''.join(x for x in par if x not in string.punctuation) for par in sp_tkn[i]]
+    sp_tkn[i] = [j for j in sp_tkn[i] if j[0] in set(string.ascii_letters)]
+
+#for i in range(len(sp_tkn)):
+#    sp_tkn[i] = [''.join(x for x in par if x in string.ascii_letters) for par in sp_tkn[i]]
 
 # Remove stopwords
 stop = set(stopwords.words('english'))
@@ -42,10 +42,8 @@ for i in range(len(sp_tkn)):
 
 # Stem remaining words
 stemmer = porter.PorterStemmer()
-stemmed = []
 
-for i in range(len(sp_tkn)):
-    stemmed.append([stemmer.stem(word) for word in sp_tkn[i]])
+stemmed = [[stemmer.stem(word) for word in doc] for doc in sp_tkn]
 
 idx = [i for i, x in enumerate(stemmed) if len(x) == 0]
 data = data.drop(data.index[idx])
