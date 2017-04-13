@@ -3,7 +3,7 @@
 """
 Created on Thu Apr 13 11:14:29 2017
 
-@author: Laura
+@author: Laura + Euan + Veronika
 """
 import re
 import string
@@ -22,6 +22,7 @@ from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
 #os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
+os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
 
 # Read in data
 # documents defined at the paragraph level
@@ -53,15 +54,24 @@ def my_stem(sp_tkn):
     stemmed = [[stemmer.stem(word) for word in doc] for doc in sp_tkn]
     return stemmed
 
-def data_processing(speeches):
-    # Put together all other steps of data processing
+def remove_zerolen_strings(stemmed, data):
+    idx = [i for i in range(len(stemmed)) if len(stemmed[i]) == 0]
+    stemmed = [i for i in stemmed if len(i) > 0]
+    data = data.drop(data.index[idx])
+    #data = data.reset_index()
+    return [stemmed, data]
+
+def data_processing(data):
+    '''
+    Put together all steps in data processing. NOTE data must have column 'speech'
+    '''
+    speeches = data.speech
     sp_tkn = my_tokeniser(speeches)
     sp_tkn = remove_nonalph(sp_tkn)
     sp_tkn = stopword_del(sp_tkn)
     stemmed = my_stem(sp_tkn)
-    return(stemmed)
-
-stemmed = data_processing(speeches)
+    stemmed, data = remove_zerolen_strings(stemmed, data)
+    return [stemmed, data]
 
 # CALCULATING TF-IDF SCORES
 
@@ -115,6 +125,14 @@ def corpus_tf_idf(stemmed):
     tf_idf = tf * idf
     return tf_idf
 
+def custom_stopword_del(stemmed, our_stopwords):
+    for i in range(len(stemmed)):
+        stemmed[i] = [j.lower() for j in stemmed[i] if j.lower() not in our_stopwords]
+    return stemmed
+
+# PROCESS THE DATA
+stemmed, processed_data = data_processing(data)
+
 #tf scores
 vocab = get_vocab(stemmed)
 tf_scores = corpus_tf(stemmed)
@@ -141,12 +159,10 @@ term_sortfidf = pd.DataFrame(
     'tf-idf': sort_tfidf
     })
 
+our_stopwords = set(vocab_sidf[0:4000])
 
-tf_idf_scores = corpus_tf_idf(stemmed)
-tf_idf_scores.sort()
-
-plt.plot(tf_idf_scores)
-plt.show()
+stemmed = custom_stopword_del(stemmed, our_stopwords)
+stemmed, processed_data = remove_zerolen_strings(stemmed, processed_data)
 
 '''
  QUESTION 2
@@ -209,7 +225,9 @@ def make_TF_IDF(stemmed):
             tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
     return tf_idf
 
-# Comparison of parties post 1933
+make_TF_IDF(stemmed)
+
+# Comparison of parties post 1860
 
 # First collect names and assign parties to all presidents after first Republican president elected
 pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
@@ -217,31 +235,24 @@ party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 
 
 pres_party = dict(zip(pres, party))
 
-data_post1860 = data.loc[data.year > 1860]
+data_post1860 = processed_data.loc[processed_data.year > 1860]
 parties = [pres_party[i] for i in data_post1860.president]
 data_post1860 = data_post1860.assign(party=parties)
 
-data_post1933 = data_post1860.loc[data_post1860.year > 1933]
+stemmed_post1860, processed_post1860 = data_processing(data_post1860)
+stemmed_post1860 = custom_stopword_del(stemmed_post1860, our_stopwords)
+stemmed_post1860, processed_post1860 = remove_zerolen_strings(stemmed_post1860, processed_post1860)
 
-stemmed_post1933 = data_processing(data_post1933.speech)
+parties_post1860 = [i for i in processed_post1860.party]
+dem_idx = [i for i in range(len(parties_post1860)) if parties_post1860[i] == 'dem']
+rep_idx = [i for i in range(len(parties_post1860)) if parties_post1860[i] == 'rep']
 
-idx = [i for i in range(len(stemmed_post1933)) if len(stemmed_post1933[i])==0]
+tf_idf_post1860 = make_TF_IDF(stemmed_post1860)
 
-stemmed_post1933 = [stemmed_post1933[i] for i in range(len(stemmed_post1933)) if not i in idx]
-data_post1933 = data_post1933.drop(data_post1933.index[idx])
-
-parties_post1933 = [i for i in data_post1933.party]
-dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
-rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
-
-tf_idf_post1933 = make_TF_IDF(stemmed_post1933)
-
-cos_sim = cosine_similarity(tf_idf_post1933)
+cos_sim = cosine_similarity(tf_idf_post1860)
 
 similarity_within_dem = cos_sim[dem_idx,:][:,dem_idx]
-
 similarity_within_rep = cos_sim[rep_idx,:][:,rep_idx]
-
 similarity_between_parties = cos_sim[dem_idx,:][:,rep_idx]
 
 print(np.mean(similarity_within_dem))
@@ -252,7 +263,7 @@ print(np.mean(similarity_between_parties))
 Now do singular value decomposition
 '''
 
-U, S, V = svds(tf_idf_post1933, k = 200)
+U, S, V = svds(tf_idf_post1860, k = 100)
 
 low_rank_approx = U.dot(np.diag(S)).dot(V)
 
@@ -263,6 +274,11 @@ low_rank_similarity_within_dem = low_rank_cos_sim[dem_idx,:][:,dem_idx]
 low_rank_similarity_within_rep = low_rank_cos_sim[rep_idx,:][:,rep_idx]
 
 low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
+
+print(np.mean(low_rank_similarity_within_dem))
+print(np.mean(low_rank_similarity_within_rep))
+print(np.mean(low_rank_similarity_between_parties))
+
 
 '''
 QUESTION 4
