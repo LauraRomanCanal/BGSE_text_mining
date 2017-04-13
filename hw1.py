@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Created on Thu Apr 13 11:14:29 2017
 
-@author: Laura + Euan + Veronika
+@authors: Euan,Laura
+
 """
 import re
 import string
@@ -111,7 +114,7 @@ def make_count(stemmed):
     return count_matrix
 
 def corpus_tf(stemmed):
-    # Calculate corpus-level TF-IDF scores
+    # Calculate corpus-level TF scores
     count_matrix = make_count(stemmed)
     tf = 1 +  np.log(np.sum(count_matrix, axis = 0))
     return tf
@@ -192,15 +195,61 @@ def read_dictionary(path):
 
     return(stemmed)
 
+def calculate_sentiment_for_word_list(sentiment_dictionary, words):
+    """
+    description: calculate the sentiment of a word list based on a provided
+                 sentiment dictionary
+    input: words: the list of words to calculate the sentiment of
+    """
+    recognized_word_count = 0
+
+    # For all words in the word list, look up the sentiment in the sentiment
+    # dictionary, and if and only if it is found, increment count of words
+    words_list = []
+    for word in words:
+        if word in sentiment_dictionary:
+            recognized_word_count += 1
+            words_list.append(word)
+
+
+    return recognized_word_count, words_list
+
 ethic_dict = read_dictionary('./dictionaries/ethics.csv')
 politic_dict = read_dictionary('./dictionaries/politics.csv')
 negative_dict = read_dictionary('./dictionaries/negative.csv')
 positive_dict = read_dictionary('./dictionaries/positive.csv')
 passive_dict = read_dictionary('./dictionaries/passive.csv')
 econ_dict = read_dictionary('./dictionaries/econ.csv')
-passive_dict = read_dictionary('./dictionaries/passive.csv')
 military_dict = read_dictionary('./dictionaries/military.csv')
 uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')
+
+words = set(stemmed[1])
+n_dict = 9
+counts = np.ndarray(shape=(len(stemmed),n_dict))
+for j in range(len(stemmed)):
+    words = []
+    words = set(stemmed[j])
+    counts[j,0] = calculate_sentiment_for_word_list(positive_dict,words)[0]
+    counts[j,1] = calculate_sentiment_for_word_list(negative_dict,words)[0]
+    counts[j,2] = calculate_sentiment_for_word_list(uncert_dict,words)[0]
+    counts[j,3] = calculate_sentiment_for_word_list(passive_dict,words)[0]
+    counts[j,4] = calculate_sentiment_for_word_list(ethic_dict,words)[0]
+    counts[j,5] = calculate_sentiment_for_word_list(politic_dict,words)[0]
+    counts[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
+    counts[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
+
+    #also we can keep track on classif words with per document and dictionary with
+    #pos_words = calculate_sentiment_for_word_list(positive_dict,words)[1]
+
+#determine topic of each doc
+tot = []
+for j in range(len(stemmed)):
+    c = 0
+    for i in range(7):
+        c += counts[j,i]
+    counts[j,8] = c
+
+cc = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
 
 
 '''
