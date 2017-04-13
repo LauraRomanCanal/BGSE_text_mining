@@ -186,18 +186,14 @@ def calculate_sentiment_for_word_list(sentiment_dictionary, words):
     recognized_word_count = 0
 
     # For all words in the word list, look up the sentiment in the sentiment
-    # dictionary, and if and only if it is found, increment a cumulative
-    # sentiment score and a count of words recognized by the sentiment
-    # dictionary.
+    # dictionary, and if and only if it is found, increment count of words
     words_list = []
     for word in words:
-        #if sentiment_dictionary.has_key(word):
         if word in sentiment_dictionary:
             recognized_word_count += 1
             words_list.append(word)
 
-    # Return a 2-tuple containing the average sentiment and the total
-    # cumulated sentiment.
+   
     return recognized_word_count, words_list
         
 ethic_dict = read_dictionary('./dictionaries/ethics.csv')
@@ -237,13 +233,7 @@ for j in range(len(stemmed)):
 
 cc = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
     
-#determine weight for each topic across all docs
 
-all_docs = cc.sum(axis=0)
-perc = np.ndarray(shape=(7,))
-for i in range(7):
-    perc[i]=100*all_docs[i]/all_docs[8]
-pp = pd.DataFrame(perc, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
 '''
 QUESTION 3
 '''
