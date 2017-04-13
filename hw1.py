@@ -117,7 +117,7 @@ def corpus_tf_idf(stemmed):
 
 vocab = pd.Series(get_vocab(stemmed))
 
-#tf scores 
+#tf scores
 tf_scores = corpus_tf(stemmed)
 
 sort_tf = sorted(tf_scores,reverse=True)
@@ -142,16 +142,16 @@ term_sortfidf = pd.DataFrame(
     'tf-idf': sort_tfidf
     })
 
-    
+
 tf_idf_scores = corpus_tf_idf(stemmed)
 tf_idf_scores.sort()
 
 plt.plot(tf_idf_scores)
 plt.show()
 
-''' 
+'''
  QUESTION 2
-'''    
+'''
 
 from nltk import PorterStemmer
 
@@ -165,13 +165,13 @@ def read_dictionary(path):
     file_content = file_content.lower()
     stripped_text = re.sub(r'[^a-z\s]',"",file_content)
     stripped_text = stripped_text.split("\n")
-    
+
     #remove the last entry
     del stripped_text[-1]
-    
+
     # remove duplicates
     stripped_text = list(set(stripped_text))
-    
+
     # we need to stem it
     stemmed = [PorterStemmer().stem(i) for i in stripped_text]
 
@@ -181,16 +181,19 @@ ethic_dict = read_dictionary('./dictionaries/ethics.csv')
 politic_dict = read_dictionary('./dictionaries/politics.csv')
 negative_dict = read_dictionary('./dictionaries/negative.csv')
 positive_dict = read_dictionary('./dictionaries/positive.csv')
-passive_dict = read_dictionary('./dictionaries/passive.csv')   
-econ_dict = read_dictionary('./dictionaries/econ.csv')   
-passive_dict = read_dictionary('./dictionaries/passive.csv')   
-military_dict = read_dictionary('./dictionaries/military.csv')   
-uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')   
+passive_dict = read_dictionary('./dictionaries/passive.csv')
+econ_dict = read_dictionary('./dictionaries/econ.csv')
+passive_dict = read_dictionary('./dictionaries/passive.csv')
+military_dict = read_dictionary('./dictionaries/military.csv')
+uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')
 
 
 '''
 QUESTION 3
 '''
+
+import sklearn
+from sklearn.metrics.pairwise import cosine_similarity
 
 def make_TF_IDF(stemmed):
     # Calculates TF-IDF matrix
@@ -205,24 +208,49 @@ def make_TF_IDF(stemmed):
             tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
     return tf_idf
 
-tf_idf = make_TF_IDF(stemmed)
+# Comparison of parties post 1933
 
-U, S, V = svd(tf_idf, full_matrices=False)
-
-# Comparison of parties
-
-# First collect names of all presidents from era of first Republican president (Lincoln electected 1860)
+# First collect names and assign parties to all presidents after first Republican president elected
 pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
 party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 + ['rep']*2 + ['dem'] + ['rep'] + ['dem']*2
 
 pres_party = dict(zip(pres, party))
 
-print(pres_party)
-
 data_post1860 = data.loc[data.year > 1860]
 parties = [pres_party[i] for i in data_post1860.president]
+data_post1860 = data_post1860.assign(party=parties)
 
-data_post1860.assign(party=parties)
+data_post1933 = data_post1860.loc[data_post1860.year > 1933]
+
+stemmed_post1933 = data_processing(data_post1933.speech)
+
+idx = [i for i in range(len(stemmed_post1933)) if len(stemmed_post1933[i])==0]
+
+dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
+rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
+
+stemmed_post1933 = [stemmed_post1933[i] for i in range(len(stemmed_post1933)) if not i in idx]
+data_post1933 = data_post1933.drop(data_post1933.index[idx])
+
+parties_post1933 = [i for i in data_post1933.party]
+dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
+rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
+
+tf_idf_post1933 = make_TF_IDF(stemmed_post1933)
+
+cos_sim = cosine_similarity(tf_idf_post1933)
+
+similarity_within_dem = cos_sim[dem_idx,:][:,dem_idx]
+
+similarity_within_rep = cos_sim[rep_idx,:][:,rep_idx]
+
+similarity_between_parties = cos_sim[dem_idx,:][:,rep_idx]
+
+print(np.mean(similarity_within_dem))
+print(np.mean(similarity_within_rep))
+print(np.mean(similarity_between_parties))
+
+U, S, V = svd(tf_idf_post1933, full_matrices=False)
 
 '''
 QUESTION 4
@@ -283,10 +311,6 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
 
     return [z_hat, rho_i, B_i, loglik_seq]
 
-<<<<<<< HEAD
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
-=======
+
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
-
-
->>>>>>> 72fadae105b154dc100e1ee7a42a9649483f2b9d
