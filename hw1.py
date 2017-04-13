@@ -150,7 +150,6 @@ print(pres_party)
 
 data_post1860 = data.loc[data.year > 1860]
 parties = [pres_party[i] for i in data_post1860.president]
-len(parties)
 
 data_post1860.assign(party=parties)
 
