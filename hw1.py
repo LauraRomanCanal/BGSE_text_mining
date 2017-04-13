@@ -58,6 +58,12 @@ def data_processing(speeches):
 
 stemmed = data_processing(speeches)
 
+# Now remove documents that after processing have zero length
+idx     = [i for i in range(len(stemmed)) if len(stemmed[i]) == 0 ]
+data    = data.drop(data.index[idx])
+speeches= speeches.drop(speeches.index[idx])
+stemmed = [doc for doc in stemmed if len(doc) > 0]
+
 # CALCULATING TF-IDF SCORES
 
 def get_vocab(stemmed_data):
@@ -128,7 +134,7 @@ def make_TF_IDF(stemmed):
     return tf_idf
 
 tf_idf = make_TF_IDF(stemmed)
-
+tf_idf.shape
 U, S, V = svd(tf_idf, full_matrices=False)
 
 '''
@@ -136,8 +142,8 @@ QUESTION 4
 '''
 
 def E_step(rho_i, B_i, count_matrix):
-    L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
-    z_hat = np.exp((L.T - logsumexp(L, axis=1)).T)
+    L =  np.log(rho_i) + count_matrix.dot( np.log(B_i.T) )
+    z_hat = np.exp( (L.T - logsumexp(L, axis=1)).T )
     return z_hat
 
 def rho_update(z_hat, count_matrix):
@@ -146,17 +152,16 @@ def rho_update(z_hat, count_matrix):
     return rho_i
 
 def beta_update(z_hat, count_matrix, N_d):
-    lower_bound =  np.finfo('float').max**(-1)
-    B_i = (count_matrix.T.dot(z_hat) / np.sum(z_hat.T * N_d, axis=1)).T
-    B_i[B_i == 0.0] = lower_bound
+    lower_bound =  1E-99
+    nominator   = count_matrix.T.dot(z_hat)
+    nominator[nominator <= lower_bound] = lower_bound
+    B_i = (nominator / np.sum(z_hat.T * N_d, axis=1)).T
     return B_i
 
 def MM_loglik(rho_i, B_i, count_matrix):
     # Calculate log-likelihood of Multinomial Mixture Model
     L =  np.exp(np.log(rho_i) + count_matrix.dot(np.log(B_i.T)))
     ll = np.sum(L, axis = 1)
-    if ll.min() == 0.0:
-        ll[ll==0.0] = np.finfo('float').max**(-1)
     ll = np.sum(np.log(ll))
     return(ll)
 
@@ -183,9 +188,12 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
         loglik_seq.append(MM_loglik(rho_i, B_i, count_matrix))
 
         # Early stopping criterion
-        if (loglik_seq[len(loglik_seq) - 1] - loglik_seq[len(loglik_seq) - 2]) <= eps:
+        if (loglik_seq[-1] - loglik_seq[-2]) <= eps:
             return [z_hat, rho_i, B_i, loglik_seq]
 
     return [z_hat, rho_i, B_i, loglik_seq]
 
-z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
+z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
+
+plt.plot(loglik_seq[10:])
+plt.show()
