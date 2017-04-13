@@ -53,6 +53,7 @@ def data_processing(speeches):
     # Put together all other steps of data processing
     sp_tkn = my_tokeniser(speeches)
     sp_tkn = remove_nonalph(sp_tkn)
+    sp_tkn = stopword_del(sp_tkn)
     stemmed = my_stem(sp_tkn)
     return(stemmed)
 
@@ -134,8 +135,24 @@ def make_TF_IDF(stemmed):
     return tf_idf
 
 tf_idf = make_TF_IDF(stemmed)
-tf_idf.shape
+
 U, S, V = svd(tf_idf, full_matrices=False)
+
+# Comparison of parties
+
+# First collect names of all presidents from era of first Republican president (Lincoln electected 1860)
+pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
+party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 + ['rep']*2 + ['dem'] + ['rep'] + ['dem']*2
+
+pres_party = dict(zip(pres, party))
+
+print(pres_party)
+
+data_post1860 = data.loc[data.year > 1860]
+parties = [pres_party[i] for i in data_post1860.president]
+len(parties)
+
+data_post1860.assign(party=parties)
 
 '''
 QUESTION 4
@@ -160,7 +177,9 @@ def beta_update(z_hat, count_matrix, N_d):
 
 def MM_loglik(rho_i, B_i, count_matrix):
     # Calculate log-likelihood of Multinomial Mixture Model
-    L =  np.exp(np.log(rho_i) + count_matrix.dot(np.log(B_i.T)))
+    L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
+    L[L <= -500] = -500
+    L =  np.exp(L)
     ll = np.sum(L, axis = 1)
     ll = np.sum(np.log(ll))
     return(ll)
@@ -194,6 +213,3 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
     return [z_hat, rho_i, B_i, loglik_seq]
 
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
-
-plt.plot(loglik_seq[10:])
-plt.show()
