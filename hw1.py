@@ -21,7 +21,7 @@ from numpy.linalg import svd
 from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
-#os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
+os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 
 # Read in data
 # documents defined at the paragraph level
@@ -115,13 +115,14 @@ def corpus_tf_idf(stemmed):
     tf_idf = tf * idf
     return tf_idf
 
-#tf scores
-vocab = get_vocab(stemmed)
+vocab = pd.Series(get_vocab(stemmed))
+
+#tf scores 
 tf_scores = corpus_tf(stemmed)
 
 sort_tf = sorted(tf_scores,reverse=True)
 ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
-vocab_s = [vocab[i] for i in ind_tf]
+vocab_s = vocab[ind_tf]
 
 term_sorttf = pd.DataFrame(
     {'term': vocab_s,
@@ -133,7 +134,7 @@ tf_idf_scores = corpus_tf_idf(stemmed)
 
 sort_tfidf = sorted(tf_idf_scores,reverse=True)
 ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
-vocab_sidf = [vocab[i] for i in ind_tfidf]
+vocab_sidf = vocab[ind_tfidf]
 #sorted tf_idf
 
 term_sortfidf = pd.DataFrame(
@@ -141,16 +142,16 @@ term_sortfidf = pd.DataFrame(
     'tf-idf': sort_tfidf
     })
 
-
+    
 tf_idf_scores = corpus_tf_idf(stemmed)
 tf_idf_scores.sort()
 
 plt.plot(tf_idf_scores)
 plt.show()
 
-'''
+''' 
  QUESTION 2
-'''
+'''    
 
 from nltk import PorterStemmer
 
@@ -164,13 +165,13 @@ def read_dictionary(path):
     file_content = file_content.lower()
     stripped_text = re.sub(r'[^a-z\s]',"",file_content)
     stripped_text = stripped_text.split("\n")
-
+    
     #remove the last entry
     del stripped_text[-1]
-
+    
     # remove duplicates
     stripped_text = list(set(stripped_text))
-
+    
     # we need to stem it
     stemmed = [PorterStemmer().stem(i) for i in stripped_text]
 
@@ -180,21 +181,16 @@ ethic_dict = read_dictionary('./dictionaries/ethics.csv')
 politic_dict = read_dictionary('./dictionaries/politics.csv')
 negative_dict = read_dictionary('./dictionaries/negative.csv')
 positive_dict = read_dictionary('./dictionaries/positive.csv')
-passive_dict = read_dictionary('./dictionaries/passive.csv')
-econ_dict = read_dictionary('./dictionaries/econ.csv')
-passive_dict = read_dictionary('./dictionaries/passive.csv')
-military_dict = read_dictionary('./dictionaries/military.csv')
-uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')
+passive_dict = read_dictionary('./dictionaries/passive.csv')   
+econ_dict = read_dictionary('./dictionaries/econ.csv')   
+passive_dict = read_dictionary('./dictionaries/passive.csv')   
+military_dict = read_dictionary('./dictionaries/military.csv')   
+uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')   
 
 
 '''
 QUESTION 3
 '''
-
-import sklearn
-import scipy
-from sklearn.metrics.pairwise import cosine_similarity
-from scipy.sparse.linalg import svds
 
 def make_TF_IDF(stemmed):
     # Calculates TF-IDF matrix
@@ -209,60 +205,9 @@ def make_TF_IDF(stemmed):
             tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
     return tf_idf
 
-# Comparison of parties post 1933
+tf_idf = make_TF_IDF(stemmed)
 
-# First collect names and assign parties to all presidents after first Republican president elected
-pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
-party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 + ['rep']*2 + ['dem'] + ['rep'] + ['dem']*2
-
-pres_party = dict(zip(pres, party))
-
-data_post1860 = data.loc[data.year > 1860]
-parties = [pres_party[i] for i in data_post1860.president]
-data_post1860 = data_post1860.assign(party=parties)
-
-data_post1933 = data_post1860.loc[data_post1860.year > 1933]
-
-stemmed_post1933 = data_processing(data_post1933.speech)
-
-idx = [i for i in range(len(stemmed_post1933)) if len(stemmed_post1933[i])==0]
-
-stemmed_post1933 = [stemmed_post1933[i] for i in range(len(stemmed_post1933)) if not i in idx]
-data_post1933 = data_post1933.drop(data_post1933.index[idx])
-
-parties_post1933 = [i for i in data_post1933.party]
-dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
-rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
-
-tf_idf_post1933 = make_TF_IDF(stemmed_post1933)
-
-cos_sim = cosine_similarity(tf_idf_post1933)
-
-similarity_within_dem = cos_sim[dem_idx,:][:,dem_idx]
-
-similarity_within_rep = cos_sim[rep_idx,:][:,rep_idx]
-
-similarity_between_parties = cos_sim[dem_idx,:][:,rep_idx]
-
-print(np.mean(similarity_within_dem))
-print(np.mean(similarity_within_rep))
-print(np.mean(similarity_between_parties))
-
-'''
-Now do singular value decomposition
-'''
-
-U, S, V = svds(tf_idf_post1933, k = 200)
-
-low_rank_approx = U.dot(np.diag(S)).dot(V)
-
-low_rank_cos_sim = cosine_similarity(low_rank_approx)
-
-low_rank_similarity_within_dem = low_rank_cos_sim[dem_idx,:][:,dem_idx]
-
-low_rank_similarity_within_rep = low_rank_cos_sim[rep_idx,:][:,rep_idx]
-
-low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
+U, S, V = svd(tf_idf, full_matrices=False)
 
 '''
 QUESTION 4
@@ -286,9 +231,7 @@ def beta_update(z_hat, count_matrix, N_d):
 
 def MM_loglik(rho_i, B_i, count_matrix):
     # Calculate log-likelihood of Multinomial Mixture Model
-    L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
-    L[L <= -500] = -500
-    L =  np.exp(L)
+    L =  np.exp(np.log(rho_i) + count_matrix.dot(np.log(B_i.T)))
     ll = np.sum(L, axis = 1)
     if ll.min() == 0.0:
         ll[ll==0.0] = np.finfo('float').max**(-1)
@@ -323,4 +266,6 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
 
     return [z_hat, rho_i, B_i, loglik_seq]
 
-z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
+z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
+
+
