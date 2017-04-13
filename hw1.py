@@ -153,13 +153,6 @@ plt.show()
  QUESTION 2
 '''
 
-'''
-Now, use the presedential speeches from last week's HW to calculate its sentiment score.
-Match every word against the dictionary and come up with a metric that captures 
-the sentiment value. If a word is not present mark its score as 0. 
-Write a function that takes in a list of word and returns their sentiment score.
-'''
-
 from nltk import PorterStemmer
 
 def read_dictionary(path):
