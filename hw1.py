@@ -142,7 +142,16 @@ term_sortfidf = pd.DataFrame(
     'tf-idf': sort_tfidf
     })
 
-''' Exercise 2 '''    
+    
+tf_idf_scores = corpus_tf_idf(stemmed)
+tf_idf_scores.sort()
+
+plt.plot(tf_idf_scores)
+plt.show()
+
+''' 
+ QUESTION 2
+'''    
 
 from nltk import PorterStemmer
 
@@ -177,5 +186,86 @@ econ_dict = read_dictionary('./dictionaries/econ.csv')
 passive_dict = read_dictionary('./dictionaries/passive.csv')   
 military_dict = read_dictionary('./dictionaries/military.csv')   
 uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')   
+
+
+'''
+QUESTION 3
+'''
+
+def make_TF_IDF(stemmed):
+    # Calculates TF-IDF matrix
+    vocab = get_vocab(stemmed)
+    D = len(stemmed)
+    idx = dict(zip(vocab,range(len(vocab))))
+    IDF_dict = make_IDF(stemmed,vocab)
+    tf_idf = np.ndarray(shape=(D,len(vocab)))
+
+    for i in range(len(stemmed)):
+        for j in set(stemmed[i]):
+            tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
+    return tf_idf
+
+tf_idf = make_TF_IDF(stemmed)
+
+U, S, V = svd(tf_idf, full_matrices=False)
+
+'''
+QUESTION 4
+'''
+
+def E_step(rho_i, B_i, count_matrix):
+    L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
+    z_hat = np.exp((L.T - logsumexp(L, axis=1)).T)
+    return z_hat
+
+def rho_update(z_hat, count_matrix):
+    D = np.shape(count_matrix)[0]
+    rho_i = np.sum(z_hat, axis = 0) / D
+    return rho_i
+
+def beta_update(z_hat, count_matrix, N_d):
+    lower_bound =  np.finfo('float').max**(-1)
+    B_i = (count_matrix.T.dot(z_hat) / np.sum(z_hat.T * N_d, axis=1)).T
+    B_i[B_i == 0.0] = lower_bound
+    return B_i
+
+def MM_loglik(rho_i, B_i, count_matrix):
+    # Calculate log-likelihood of Multinomial Mixture Model
+    L =  np.exp(np.log(rho_i) + count_matrix.dot(np.log(B_i.T)))
+    ll = np.sum(L, axis = 1)
+    if ll.min() == 0.0:
+        ll[ll==0.0] = np.finfo('float').max**(-1)
+    ll = np.sum(np.log(ll))
+    return(ll)
+
+def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
+    count_matrix = make_count(data)
+    vocab = get_vocab(data)
+    D = len(data)
+    n = len(vocab)
+    N_d = [len(x) for x in data]
+
+    # Initialise params
+    rho_i   = [1/k]*k
+    B_i     = np.random.dirichlet([1]*n, size=k)
+    loglik_seq = [MM_loglik(rho_i, B_i, count_matrix)]
+
+    for i in range(max_iters):
+
+        # E step
+        z_hat   = E_step(rho_i, B_i, count_matrix)
+
+        # M step
+        rho_i   = rho_update(z_hat, count_matrix)
+        B_i     = beta_update(z_hat,count_matrix, N_d)
+        loglik_seq.append(MM_loglik(rho_i, B_i, count_matrix))
+
+        # Early stopping criterion
+        if (loglik_seq[len(loglik_seq) - 1] - loglik_seq[len(loglik_seq) - 2]) <= eps:
+            return [z_hat, rho_i, B_i, loglik_seq]
+
+    return [z_hat, rho_i, B_i, loglik_seq]
+
+z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
 
 
