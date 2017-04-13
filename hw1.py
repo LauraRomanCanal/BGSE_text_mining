@@ -1,23 +1,27 @@
-import nltk
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Apr 13 11:14:29 2017
+
+@author: Laura
+"""
+import re
 import string
 import pandas as pd
 import numpy as np
 import pickle
 import os
-import matplotlib
-from matplotlib import pyplot as plt
+import nltk
 from nltk import tokenize
 from nltk.corpus import stopwords
 from nltk.stem import porter
+import matplotlib
+from matplotlib import pyplot as plt
 from numpy.linalg import svd
 from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
-os.chdir('/home/euan/documents/text-mining/homework')
-
-'''
-QUESTION 1
-'''
+os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 
 # Read in data
 # documents defined at the paragraph level
@@ -59,12 +63,6 @@ def data_processing(speeches):
 
 stemmed = data_processing(speeches)
 
-# Now remove documents that after processing have zero length
-idx     = [i for i in range(len(stemmed)) if len(stemmed[i]) == 0 ]
-data    = data.drop(data.index[idx])
-speeches= speeches.drop(speeches.index[idx])
-stemmed = [doc for doc in stemmed if len(doc) > 0]
-
 # CALCULATING TF-IDF SCORES
 
 def get_vocab(stemmed_data):
@@ -102,6 +100,12 @@ def make_count(stemmed):
             count_matrix[i,idx[j]] = stemmed[i].count(j)
     return count_matrix
 
+def corpus_tf(stemmed):
+    # Calculate corpus-level TF-IDF scores
+    count_matrix = make_count(stemmed)
+    tf = 1 +  np.log(np.sum(count_matrix, axis = 0))
+    return tf
+
 def corpus_tf_idf(stemmed):
     # Calculate corpus-level TF-IDF scores
     count_matrix = make_count(stemmed)
@@ -111,11 +115,78 @@ def corpus_tf_idf(stemmed):
     tf_idf = tf * idf
     return tf_idf
 
+vocab = pd.Series(get_vocab(stemmed))
+
+#tf scores 
+tf_scores = corpus_tf(stemmed)
+
+sort_tf = sorted(tf_scores,reverse=True)
+ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
+vocab_s = vocab[ind_tf]
+
+term_sorttf = pd.DataFrame(
+    {'term': vocab_s,
+    'tf': sort_tf
+    })
+
+#tf-idf scores
+tf_idf_scores = corpus_tf_idf(stemmed)
+
+sort_tfidf = sorted(tf_idf_scores,reverse=True)
+ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
+vocab_sidf = vocab[ind_tfidf]
+#sorted tf_idf
+
+term_sortfidf = pd.DataFrame(
+    {'term': vocab_sidf,
+    'tf-idf': sort_tfidf
+    })
+
+    
 tf_idf_scores = corpus_tf_idf(stemmed)
 tf_idf_scores.sort()
 
 plt.plot(tf_idf_scores)
 plt.show()
+
+''' 
+ QUESTION 2
+'''    
+
+from nltk import PorterStemmer
+
+def read_dictionary(path):
+    '''
+    Read in and format and stem dictionary
+    output: list of stemmed words
+    '''
+    file_handle = open(path)
+    file_content = file_handle.read()
+    file_content = file_content.lower()
+    stripped_text = re.sub(r'[^a-z\s]',"",file_content)
+    stripped_text = stripped_text.split("\n")
+    
+    #remove the last entry
+    del stripped_text[-1]
+    
+    # remove duplicates
+    stripped_text = list(set(stripped_text))
+    
+    # we need to stem it
+    stemmed = [PorterStemmer().stem(i) for i in stripped_text]
+
+    return(stemmed)
+
+ethic_dict = read_dictionary('./dictionaries/ethics.csv')
+politic_dict = read_dictionary('./dictionaries/politics.csv')
+negative_dict = read_dictionary('./dictionaries/negative.csv')
+positive_dict = read_dictionary('./dictionaries/positive.csv')
+passive_dict = read_dictionary('./dictionaries/passive.csv')   
+econ_dict = read_dictionary('./dictionaries/econ.csv')   
+passive_dict = read_dictionary('./dictionaries/passive.csv')   
+military_dict = read_dictionary('./dictionaries/military.csv')   
+uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')   
+
 
 '''
 QUESTION 3
@@ -158,8 +229,8 @@ QUESTION 4
 '''
 
 def E_step(rho_i, B_i, count_matrix):
-    L =  np.log(rho_i) + count_matrix.dot( np.log(B_i.T) )
-    z_hat = np.exp( (L.T - logsumexp(L, axis=1)).T )
+    L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
+    z_hat = np.exp((L.T - logsumexp(L, axis=1)).T)
     return z_hat
 
 def rho_update(z_hat, count_matrix):
@@ -168,10 +239,9 @@ def rho_update(z_hat, count_matrix):
     return rho_i
 
 def beta_update(z_hat, count_matrix, N_d):
-    lower_bound =  1E-99
-    nominator   = count_matrix.T.dot(z_hat)
-    nominator[nominator <= lower_bound] = lower_bound
-    B_i = (nominator / np.sum(z_hat.T * N_d, axis=1)).T
+    lower_bound =  np.finfo('float').max**(-1)
+    B_i = (count_matrix.T.dot(z_hat) / np.sum(z_hat.T * N_d, axis=1)).T
+    B_i[B_i == 0.0] = lower_bound
     return B_i
 
 def MM_loglik(rho_i, B_i, count_matrix):
@@ -180,6 +250,8 @@ def MM_loglik(rho_i, B_i, count_matrix):
     L[L <= -500] = -500
     L =  np.exp(L)
     ll = np.sum(L, axis = 1)
+    if ll.min() == 0.0:
+        ll[ll==0.0] = np.finfo('float').max**(-1)
     ll = np.sum(np.log(ll))
     return(ll)
 
@@ -206,9 +278,15 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
         loglik_seq.append(MM_loglik(rho_i, B_i, count_matrix))
 
         # Early stopping criterion
-        if (loglik_seq[-1] - loglik_seq[-2]) <= eps:
+        if (loglik_seq[len(loglik_seq) - 1] - loglik_seq[len(loglik_seq) - 2]) <= eps:
             return [z_hat, rho_i, B_i, loglik_seq]
 
     return [z_hat, rho_i, B_i, loglik_seq]
 
+<<<<<<< HEAD
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
+=======
+z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
+
+
+>>>>>>> 72fadae105b154dc100e1ee7a42a9649483f2b9d
