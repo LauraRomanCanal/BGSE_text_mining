@@ -21,7 +21,7 @@ from numpy.linalg import svd
 from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
-os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
+#os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 
 # Read in data
 # documents defined at the paragraph level
@@ -115,14 +115,13 @@ def corpus_tf_idf(stemmed):
     tf_idf = tf * idf
     return tf_idf
 
-vocab = pd.Series(get_vocab(stemmed))
-
 #tf scores
+vocab = get_vocab(stemmed)
 tf_scores = corpus_tf(stemmed)
 
 sort_tf = sorted(tf_scores,reverse=True)
 ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
-vocab_s = vocab[ind_tf]
+vocab_s = [vocab[i] for i in ind_tf]
 
 term_sorttf = pd.DataFrame(
     {'term': vocab_s,
@@ -134,7 +133,7 @@ tf_idf_scores = corpus_tf_idf(stemmed)
 
 sort_tfidf = sorted(tf_idf_scores,reverse=True)
 ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
-vocab_sidf = vocab[ind_tfidf]
+vocab_sidf = [vocab[i] for i in ind_tfidf]
 #sorted tf_idf
 
 term_sortfidf = pd.DataFrame(
@@ -193,7 +192,9 @@ QUESTION 3
 '''
 
 import sklearn
+import scipy
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse.linalg import svds
 
 def make_TF_IDF(stemmed):
     # Calculates TF-IDF matrix
@@ -226,9 +227,6 @@ stemmed_post1933 = data_processing(data_post1933.speech)
 
 idx = [i for i in range(len(stemmed_post1933)) if len(stemmed_post1933[i])==0]
 
-dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
-rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
-
 stemmed_post1933 = [stemmed_post1933[i] for i in range(len(stemmed_post1933)) if not i in idx]
 data_post1933 = data_post1933.drop(data_post1933.index[idx])
 
@@ -250,7 +248,21 @@ print(np.mean(similarity_within_dem))
 print(np.mean(similarity_within_rep))
 print(np.mean(similarity_between_parties))
 
-U, S, V = svd(tf_idf_post1933, full_matrices=False)
+'''
+Now do singular value decomposition
+'''
+
+U, S, V = svds(tf_idf_post1933, k = 200)
+
+low_rank_approx = U.dot(np.diag(S)).dot(V)
+
+low_rank_cos_sim = cosine_similarity(low_rank_approx)
+
+low_rank_similarity_within_dem = low_rank_cos_sim[dem_idx,:][:,dem_idx]
+
+low_rank_similarity_within_rep = low_rank_cos_sim[rep_idx,:][:,rep_idx]
+
+low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
 
 '''
 QUESTION 4
@@ -312,5 +324,3 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
     return [z_hat, rho_i, B_i, loglik_seq]
 
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
-
-z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 1)
