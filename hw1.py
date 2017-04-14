@@ -4,9 +4,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Apr 13 11:14:29 2017
-
 @authors: Euan,Laura
-
 """
 import re
 import string
@@ -25,13 +23,9 @@ from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
 #os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
-os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
 
-# Read in data
-# documents defined at the paragraph level
-data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
-speeches = data['speech']
-
+#PRE-PROCESSING DATA
+###############################################################################
 def my_tokeniser(speeches):
     # Tokenize speeches
     tokenizer = RegexpTokenizer(r'\w+')
@@ -57,27 +51,24 @@ def my_stem(sp_tkn):
     stemmed = [[stemmer.stem(word) for word in doc] for doc in sp_tkn]
     return stemmed
 
-def remove_zerolen_strings(stemmed, data):
-    idx = [i for i in range(len(stemmed)) if len(stemmed[i]) == 0]
-    stemmed = [i for i in stemmed if len(i) > 0]
-    data = data.drop(data.index[idx])
-    #data = data.reset_index()
-    return [stemmed, data]
-
-def data_processing(data):
-    '''
-    Put together all steps in data processing. NOTE data must have column 'speech'
-    '''
-    speeches = data.speech
+def data_processing(speeches):
+    # Put together all other steps of data processing
     sp_tkn = my_tokeniser(speeches)
     sp_tkn = remove_nonalph(sp_tkn)
     sp_tkn = stopword_del(sp_tkn)
     stemmed = my_stem(sp_tkn)
-    stemmed, data = remove_zerolen_strings(stemmed, data)
-    return [stemmed, data]
+    return(stemmed)
+###############################################################################
+
+# Read in data
+# documents defined at the paragraph level
+data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
+speeches = data['speech']
+stemmed = data_processing(speeches)
+
 
 # CALCULATING TF-IDF SCORES
-
+###############################################################################
 def get_vocab(stemmed_data):
     # extracts corpus vocabulary from list of documents
     vocab = list(set().union(*stemmed_data))
@@ -127,14 +118,7 @@ def corpus_tf_idf(stemmed):
     tf = 1 +  np.log(np.sum(count_matrix, axis = 0))
     tf_idf = tf * idf
     return tf_idf
-
-def custom_stopword_del(stemmed, our_stopwords):
-    for i in range(len(stemmed)):
-        stemmed[i] = [j.lower() for j in stemmed[i] if j.lower() not in our_stopwords]
-    return stemmed
-
-# PROCESS THE DATA
-stemmed, processed_data = data_processing(data)
+###############################################################################
 
 #tf scores
 vocab = get_vocab(stemmed)
@@ -162,10 +146,12 @@ term_sortfidf = pd.DataFrame(
     'tf-idf': sort_tfidf
     })
 
-our_stopwords = set(vocab_sidf[0:4000])
 
-stemmed = custom_stopword_del(stemmed, our_stopwords)
-stemmed, processed_data = remove_zerolen_strings(stemmed, processed_data)
+tf_idf_scores = corpus_tf_idf(stemmed)
+tf_idf_scores.sort()
+
+plt.plot(tf_idf_scores)
+plt.show()
 
 '''
  QUESTION 2
@@ -173,6 +159,8 @@ stemmed, processed_data = remove_zerolen_strings(stemmed, processed_data)
 
 from nltk import PorterStemmer
 
+# DICTIONARY METHODS
+###############################################################################
 def read_dictionary(path):
     '''
     Read in and format and stem dictionary
@@ -203,17 +191,14 @@ def calculate_sentiment_for_word_list(sentiment_dictionary, words):
     """
     recognized_word_count = 0
 
-    # For all words in the word list, look up the sentiment in the sentiment
-    # dictionary, and if and only if it is found, increment count of words
     words_list = []
     for word in words:
         if word in sentiment_dictionary:
             recognized_word_count += 1
             words_list.append(word)
 
-
     return recognized_word_count, words_list
-
+###############################################################################
 ethic_dict = read_dictionary('./dictionaries/ethics.csv')
 politic_dict = read_dictionary('./dictionaries/politics.csv')
 negative_dict = read_dictionary('./dictionaries/negative.csv')
@@ -222,8 +207,14 @@ passive_dict = read_dictionary('./dictionaries/passive.csv')
 econ_dict = read_dictionary('./dictionaries/econ.csv')
 military_dict = read_dictionary('./dictionaries/military.csv')
 uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')
-
-words = set(stemmed[1])
+dim_dict = [len(positive_dict),
+len(negative_dict),
+len(econ_dict),
+len(politic_dict),
+len(passive_dict),
+len(military_dict),
+len(ethic_dict),
+len(uncert_dict)]
 n_dict = 9
 counts = np.ndarray(shape=(len(stemmed),n_dict))
 for j in range(len(stemmed)):
@@ -237,7 +228,7 @@ for j in range(len(stemmed)):
     counts[j,5] = calculate_sentiment_for_word_list(politic_dict,words)[0]
     counts[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
     counts[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
-
+ 
     #also we can keep track on classif words with per document and dictionary with
     #pos_words = calculate_sentiment_for_word_list(positive_dict,words)[1]
 
@@ -246,10 +237,83 @@ tot = []
 for j in range(len(stemmed)):
     c = 0
     for i in range(7):
-        c += counts[j,i]
+        c += counts[j,i] 
     counts[j,8] = c
 
 cc = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
+    
+#determine weight for each topic across all docs
+all_docs = cc.sum(axis=0)
+perc = np.ndarray(shape=(9,))
+for i in range(9):
+    perc[i]=100*all_docs[i]/all_docs[8]
+perc = pd.DataFrame(perc)
+perc.columns = ['%']
+perc.index =    ['positive', 'negative', 'uncertainty', 'passive', 'ethic', 'politics', 'economy', 'military', 'total']
+
+perc.sort_values(by='%', ascending=0)
+#so speeches are mostly positive and about politics and economy
+
+
+#let's study the evolution of speeches topics over years
+dd= pd.DataFrame(data)
+data_by_years = dd.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
+df3 = data_by_years.reset_index()
+df3.shape
+speeches_y = df3['speech']
+stemmed_y = data_processing(speeches_y)
+len(stemmed_y)
+#we now have 224 docs (one per year)
+
+counts_y = np.ndarray(shape=(len(stemmed_y),n_dict))
+for j in range(len(stemmed_y)):
+    words = []
+    words = set(stemmed_y[j])
+    counts_y[j,0] = calculate_sentiment_for_word_list(positive_dict,words)[0]
+    counts_y[j,1] = calculate_sentiment_for_word_list(negative_dict,words)[0]
+    counts_y[j,2] = calculate_sentiment_for_word_list(uncert_dict,words)[0]
+    counts_y[j,3] = calculate_sentiment_for_word_list(passive_dict,words)[0]
+    counts_y[j,4] = calculate_sentiment_for_word_list(ethic_dict,words)[0]
+    counts_y[j,5] = calculate_sentiment_for_word_list(politic_dict,words)[0]
+    counts_y[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
+    counts_y[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
+
+len(negative_dict)  
+#determine topic of each doc
+tot = []
+for j in range(len(stemmed_y)):
+    c = 0
+    for i in range(7):
+        c += counts_y[j,i] 
+    counts_y[j,8] = c
+
+cc_y = pd.DataFrame(counts_y, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
+cc_y['pos']=100*cc_y['pos']/cc_y['total']
+cc_y['neg']=100*cc_y['neg']/cc_y['total']
+cc_y['unc']=100*cc_y['unc']/cc_y['total']
+cc_y['passive']=100*cc_y['passive']/cc_y['total']
+cc_y['ethic']=100*cc_y['ethic']/cc_y['total']
+cc_y['polit']=100*cc_y['polit']/cc_y['total']
+cc_y['econ']=100*cc_y['econ']/cc_y['total']
+cc_y['milit']=100*cc_y['milit']/cc_y['total']
+cc_y['year'] =   df3['year']  
+
+
+cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+#every 32 years
+cc_y[0:32].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y[33:65].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y[66:98].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y[99:131].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y[132:164].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y[165:197].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y[197:230].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+
+#barplot
+#df.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="bar").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+#cc_y.sort(columns='neg',axis=0, ascending=False)
 
 
 '''
@@ -261,6 +325,7 @@ import scipy
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse.linalg import svds
 
+###############################################################################
 def make_TF_IDF(stemmed):
     # Calculates TF-IDF matrix
     vocab = get_vocab(stemmed)
@@ -273,10 +338,9 @@ def make_TF_IDF(stemmed):
         for j in set(stemmed[i]):
             tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
     return tf_idf
+###############################################################################
 
-make_TF_IDF(stemmed)
-
-# Comparison of parties post 1860
+# Comparison of parties post 1933
 
 # First collect names and assign parties to all presidents after first Republican president elected
 pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
@@ -284,24 +348,31 @@ party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 
 
 pres_party = dict(zip(pres, party))
 
-data_post1860 = processed_data.loc[processed_data.year > 1860]
+data_post1860 = data.loc[data.year > 1860]
 parties = [pres_party[i] for i in data_post1860.president]
 data_post1860 = data_post1860.assign(party=parties)
 
-stemmed_post1860, processed_post1860 = data_processing(data_post1860)
-stemmed_post1860 = custom_stopword_del(stemmed_post1860, our_stopwords)
-stemmed_post1860, processed_post1860 = remove_zerolen_strings(stemmed_post1860, processed_post1860)
+data_post1933 = data_post1860.loc[data_post1860.year > 1933]
 
-parties_post1860 = [i for i in processed_post1860.party]
-dem_idx = [i for i in range(len(parties_post1860)) if parties_post1860[i] == 'dem']
-rep_idx = [i for i in range(len(parties_post1860)) if parties_post1860[i] == 'rep']
+stemmed_post1933 = data_processing(data_post1933.speech)
 
-tf_idf_post1860 = make_TF_IDF(stemmed_post1860)
+idx = [i for i in range(len(stemmed_post1933)) if len(stemmed_post1933[i])==0]
 
-cos_sim = cosine_similarity(tf_idf_post1860)
+stemmed_post1933 = [stemmed_post1933[i] for i in range(len(stemmed_post1933)) if not i in idx]
+data_post1933 = data_post1933.drop(data_post1933.index[idx])
+
+parties_post1933 = [i for i in data_post1933.party]
+dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
+rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
+
+tf_idf_post1933 = make_TF_IDF(stemmed_post1933)
+
+cos_sim = cosine_similarity(tf_idf_post1933)
 
 similarity_within_dem = cos_sim[dem_idx,:][:,dem_idx]
+
 similarity_within_rep = cos_sim[rep_idx,:][:,rep_idx]
+
 similarity_between_parties = cos_sim[dem_idx,:][:,rep_idx]
 
 print(np.mean(similarity_within_dem))
@@ -312,7 +383,7 @@ print(np.mean(similarity_between_parties))
 Now do singular value decomposition
 '''
 
-U, S, V = svds(tf_idf_post1860, k = 100)
+U, S, V = svds(tf_idf_post1933, k = 200)
 
 low_rank_approx = U.dot(np.diag(S)).dot(V)
 
@@ -324,15 +395,11 @@ low_rank_similarity_within_rep = low_rank_cos_sim[rep_idx,:][:,rep_idx]
 
 low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
 
-print(np.mean(low_rank_similarity_within_dem))
-print(np.mean(low_rank_similarity_within_rep))
-print(np.mean(low_rank_similarity_between_parties))
-
-
 '''
 QUESTION 4
 '''
-
+# EM
+###############################################################################
 def E_step(rho_i, B_i, count_matrix):
     L =  np.log(rho_i) + count_matrix.dot(np.log(B_i.T))
     z_hat = np.exp((L.T - logsumexp(L, axis=1)).T)
@@ -387,5 +454,7 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
             return [z_hat, rho_i, B_i, loglik_seq]
 
     return [z_hat, rho_i, B_i, loglik_seq]
+###############################################################################
 
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
+
