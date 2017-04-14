@@ -51,21 +51,25 @@ def my_stem(sp_tkn):
     stemmed = [[stemmer.stem(word) for word in doc] for doc in sp_tkn]
     return stemmed
 
-def data_processing(speeches):
-    # Put together all other steps of data processing
+def remove_zerolen_strings(stemmed, data):
+    idx = [i for i in range(len(stemmed)) if len(stemmed[i]) == 0]
+    stemmed = [i for i in stemmed if len(i) > 0]
+    data = data.drop(data.index[idx])
+    proc_data = data.reset_index()
+    return [stemmed, proc_data]
+
+def data_processing(data):
+    '''
+    Put together all steps in data processing. NOTE data must have column 'speech'
+    '''
+    speeches = data.speech
     sp_tkn = my_tokeniser(speeches)
     sp_tkn = remove_nonalph(sp_tkn)
     sp_tkn = stopword_del(sp_tkn)
     stemmed = my_stem(sp_tkn)
-    return(stemmed)
+    stemmed, data = remove_zerolen_strings(stemmed, data)
+    return [stemmed, data]
 ###############################################################################
-
-# Read in data
-# documents defined at the paragraph level
-data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
-speeches = data['speech']
-stemmed = data_processing(speeches)
-
 
 # CALCULATING TF-IDF SCORES
 ###############################################################################
@@ -118,7 +122,19 @@ def corpus_tf_idf(stemmed):
     tf = 1 +  np.log(np.sum(count_matrix, axis = 0))
     tf_idf = tf * idf
     return tf_idf
+
+def custom_stopword_del(stemmed, our_stopwords):
+    for i in range(len(stemmed)):
+        stemmed[i] = [j.lower() for j in stemmed[i] if j.lower() not in our_stopwords]
+    return stemmed
 ###############################################################################
+
+# Read in data
+# documents defined at the paragraph level
+data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
+
+# PROCESS THE DATA
+stemmed, processed_data = data_processing(data)
 
 #tf scores
 vocab = get_vocab(stemmed)
@@ -147,11 +163,10 @@ term_sortfidf = pd.DataFrame(
     })
 
 
-tf_idf_scores = corpus_tf_idf(stemmed)
-tf_idf_scores.sort()
-
-plt.plot(tf_idf_scores)
-plt.show()
+# Remove context-specific stopwords
+our_stopwords = set(vocab_sidf[0:2000])
+stemmed = custom_stopword_del(stemmed, our_stopwords)
+stemmed, processed_data = remove_zerolen_strings(stemmed, processed_data)
 
 '''
  QUESTION 2
@@ -228,7 +243,7 @@ for j in range(len(stemmed)):
     counts[j,5] = calculate_sentiment_for_word_list(politic_dict,words)[0]
     counts[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
     counts[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
- 
+
     #also we can keep track on classif words with per document and dictionary with
     #pos_words = calculate_sentiment_for_word_list(positive_dict,words)[1]
 
@@ -237,11 +252,11 @@ tot = []
 for j in range(len(stemmed)):
     c = 0
     for i in range(7):
-        c += counts[j,i] 
+        c += counts[j,i]
     counts[j,8] = c
 
 cc = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
-    
+
 #determine weight for each topic across all docs
 all_docs = cc.sum(axis=0)
 perc = np.ndarray(shape=(9,))
@@ -260,8 +275,8 @@ dd= pd.DataFrame(data)
 data_by_years = dd.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
 df3 = data_by_years.reset_index()
 df3.shape
-speeches_y = df3['speech']
-stemmed_y = data_processing(speeches_y)
+
+stemmed_y, processed_data_y = data_processing(df3)
 len(stemmed_y)
 #we now have 224 docs (one per year)
 
@@ -278,13 +293,13 @@ for j in range(len(stemmed_y)):
     counts_y[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
     counts_y[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
 
-len(negative_dict)  
+len(negative_dict)
 #determine topic of each doc
 tot = []
 for j in range(len(stemmed_y)):
     c = 0
     for i in range(7):
-        c += counts_y[j,i] 
+        c += counts_y[j,i]
     counts_y[j,8] = c
 
 cc_y = pd.DataFrame(counts_y, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
@@ -296,7 +311,7 @@ cc_y['ethic']=100*cc_y['ethic']/cc_y['total']
 cc_y['polit']=100*cc_y['polit']/cc_y['total']
 cc_y['econ']=100*cc_y['econ']/cc_y['total']
 cc_y['milit']=100*cc_y['milit']/cc_y['total']
-cc_y['year'] =   df3['year']  
+cc_y['year'] =   df3['year']
 
 
 cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -310,6 +325,7 @@ cc_y[132:164].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","
 cc_y[165:197].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
 cc_y[197:230].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
+plt.show()
 
 #barplot
 #df.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="bar").legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -457,4 +473,3 @@ def Multinom_Mixt_EM(data, k, max_iters = 100, eps = 10^(-3)):
 ###############################################################################
 
 z_hat, rho_i, B_i, loglik_seq = Multinom_Mixt_EM(stemmed, k=3, max_iters = 100)
-
