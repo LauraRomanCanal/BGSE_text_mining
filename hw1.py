@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Thu Apr 13 11:14:29 2017
 @authors: Euan,Laura
@@ -55,8 +53,8 @@ def remove_zerolen_strings(stemmed, data):
     idx = [i for i in range(len(stemmed)) if len(stemmed[i]) == 0]
     stemmed = [i for i in stemmed if len(i) > 0]
     data = data.drop(data.index[idx])
-    proc_data = data.reset_index()
-    return [stemmed, proc_data]
+    data = data.reset_index(drop=True)
+    return [stemmed, data]
 
 def data_processing(data):
     '''
@@ -340,8 +338,8 @@ import sklearn
 import scipy
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse.linalg import svds
-
 ###############################################################################
+
 def make_TF_IDF(stemmed):
     # Calculates TF-IDF matrix
     vocab = get_vocab(stemmed)
@@ -365,10 +363,19 @@ party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 
 pres_party = dict(zip(pres, party))
 
 data_post1860 = processed_data.loc[processed_data.year > 1860]
+data_post1860 = data_post1860.reset_index(drop=True)
 parties = [pres_party[i] for i in data_post1860.president]
 data_post1860 = data_post1860.assign(party=parties)
 
 stemmed_post1860, processed_post1860 = data_processing(data_post1860)
+
+speeches = data_post1860.speech
+sp_tkn = my_tokeniser(speeches)
+sp_tkn = remove_nonalph(sp_tkn)
+sp_tkn = stopword_del(sp_tkn)
+stemmed = my_stem(sp_tkn)
+stemmed, data = remove_zerolen_strings(stemmed, data)
+
 stemmed_post1860 = custom_stopword_del(stemmed_post1860, our_stopwords)
 stemmed_post1860, processed_post1860 = remove_zerolen_strings(stemmed_post1860, processed_post1860)
 
@@ -392,17 +399,19 @@ print(np.mean(similarity_between_parties))
 Now do singular value decomposition
 '''
 
-U, S, V = svds(tf_idf_post1933, k = 200)
+U, S, V = svds(tf_idf_post1860, k = 200)
 
 low_rank_approx = U.dot(np.diag(S)).dot(V)
 
 low_rank_cos_sim = cosine_similarity(low_rank_approx)
 
 low_rank_similarity_within_dem = low_rank_cos_sim[dem_idx,:][:,dem_idx]
-
 low_rank_similarity_within_rep = low_rank_cos_sim[rep_idx,:][:,rep_idx]
-
 low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
+
+print(np.mean(low_rank_similarity_within_dem))
+print(np.mean(low_rank_similarity_within_rep))
+print(np.mean(low_rank_similarity_between_parties))
 
 '''
 QUESTION 4
