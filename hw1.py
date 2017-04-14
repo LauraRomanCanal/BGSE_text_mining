@@ -356,7 +356,7 @@ def make_TF_IDF(stemmed):
     return tf_idf
 ###############################################################################
 
-# Comparison of parties post 1933
+# Comparison of parties post 1860
 
 # First collect names and assign parties to all presidents after first Republican president elected
 pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
@@ -364,31 +364,24 @@ party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 
 
 pres_party = dict(zip(pres, party))
 
-data_post1860 = data.loc[data.year > 1860]
+data_post1860 = processed_data.loc[processed_data.year > 1860]
 parties = [pres_party[i] for i in data_post1860.president]
 data_post1860 = data_post1860.assign(party=parties)
 
-data_post1933 = data_post1860.loc[data_post1860.year > 1933]
+stemmed_post1860, processed_post1860 = data_processing(data_post1860)
+stemmed_post1860 = custom_stopword_del(stemmed_post1860, our_stopwords)
+stemmed_post1860, processed_post1860 = remove_zerolen_strings(stemmed_post1860, processed_post1860)
 
-stemmed_post1933 = data_processing(data_post1933.speech)
+parties_post1860 = [i for i in processed_post1860.party]
+dem_idx = [i for i in range(len(parties_post1860)) if parties_post1860[i] == 'dem']
+rep_idx = [i for i in range(len(parties_post1860)) if parties_post1860[i] == 'rep']
 
-idx = [i for i in range(len(stemmed_post1933)) if len(stemmed_post1933[i])==0]
+tf_idf_post1860 = make_TF_IDF(stemmed_post1860)
 
-stemmed_post1933 = [stemmed_post1933[i] for i in range(len(stemmed_post1933)) if not i in idx]
-data_post1933 = data_post1933.drop(data_post1933.index[idx])
-
-parties_post1933 = [i for i in data_post1933.party]
-dem_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'dem']
-rep_idx = [i for i in range(len(parties_post1933)) if parties_post1933[i] == 'rep']
-
-tf_idf_post1933 = make_TF_IDF(stemmed_post1933)
-
-cos_sim = cosine_similarity(tf_idf_post1933)
+cos_sim = cosine_similarity(tf_idf_post1860)
 
 similarity_within_dem = cos_sim[dem_idx,:][:,dem_idx]
-
 similarity_within_rep = cos_sim[rep_idx,:][:,rep_idx]
-
 similarity_between_parties = cos_sim[dem_idx,:][:,rep_idx]
 
 print(np.mean(similarity_within_dem))
