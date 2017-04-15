@@ -264,9 +264,7 @@ perc.index =    ['positive', 'negative', 'uncertainty', 'passive', 'ethic', 'pol
 perc.sort_values(by='%', ascending=0)
 #so speeches are mostly positive and about politics and economy
 
-'''
-2.c)
-'''
+
 
 #let's study the evolution of speeches topics over years
 dd= pd.DataFrame(data)
@@ -371,8 +369,68 @@ plt.savefig('1900s.png', bbox_inches='tight')
 #6) ECONOMY: 1949: Recession of 1949
 #7) POLITICS: 1964: Legislation in the U.S. Congress on Civil Rights is passed. It banned discrimination in jobs, voting and accommodations. The Tonkin Resolution is passed by the United States Congress, authorizing broad powers to the president to take action in Vietnam after North Vietnamese boats had attacked two United States destroyers five days earlier.
 
-    
+''' 2.c)'''
 
+''' unemployment'''
+# compute correlation between annual unemployment rate and p.e. uncertainty
+file = pd.read_table("annual_unemployment.txt",header=None)
+#file1 = pd.read_table("jan_unempl.txt",header=None)
+#file1.applymap(np.isreal) #check if numeric vals
+unempl = pd.DataFrame(file[1])
+uncert= cc_y[cc_y.year >= 1948].unc.reset_index(drop=True)
+posit= cc_y[cc_y.year >= 1948].pos.reset_index(drop=True)
+negat= cc_y[cc_y.year >= 1948].neg.reset_index(drop=True)
+passive= cc_y[cc_y.year >= 1948].passive.reset_index(drop=True)
+econ= cc_y[cc_y.year >= 1948].econ.reset_index(drop=True)
+polit= cc_y[cc_y.year >= 1948].polit.reset_index(drop=True)
+milit= cc_y[cc_y.year >= 1948].milit.reset_index(drop=True)
+
+corr_unemployment = pd.DataFrame([unempl.corrwith(uncert),unempl.corrwith(posit),unempl.corrwith(negat),
+               unempl.corrwith(passive),unempl.corrwith(econ),unempl.corrwith(polit),
+                unempl.corrwith(milit)])
+corr_unemployment[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']
+#correlation between unemployment (on Jan) and uncertainty is positive as expected, although weak.
+#if using january data correlation of 0.07 and pval 0.57...
+
+'''inflation rate'''
+file2 = pd.read_table("inflation_rate.txt",header=None)
+#file2.applymap(np.isreal) check if numeric vals
+infl = pd.DataFrame(file2[1])
+corr_inflation = pd.DataFrame([infl.corrwith(uncert),infl.corrwith(posit),infl.corrwith(negat),
+               infl.corrwith(passive),infl.corrwith(econ),infl.corrwith(polit),
+                infl.corrwith(milit)])
+corr_inflation[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']
+#correlation between annual inflation rate and uncertainty is negative as expected, although vv weak. 
+
+from scipy.stats.stats import pearsonr
+
+#correlation and p-value 
+uu = uncert.values
+
+une = unempl[1].values
+pearsonr(une, uu) #unemployment - uncertainty
+        
+ii = infl[1].values
+pearsonr(ii, uu) #inflation - uncertainty
+
+pp = posit.values
+nn = negat.values
+pa = passive.values
+ec = econ.values
+po = polit.values
+mi = milit.values
+
+corr_pvals = [pearsonr(ii, pp) ,    
+pearsonr(ii, nn)        ,
+pearsonr(ii, pa) ,
+pearsonr(ii, po)  ,   
+pearsonr(ii, mi)   ,     
+pearsonr(ii, ec) ]
+
+'''2.d)'''
+    
+    
+    
 '''
 QUESTION 3
 '''
