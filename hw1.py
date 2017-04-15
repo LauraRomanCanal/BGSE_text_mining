@@ -212,6 +212,9 @@ def calculate_sentiment_for_word_list(sentiment_dictionary, words):
 
     return recognized_word_count, words_list
 ###############################################################################
+'''
+2.a)
+'''
 ethic_dict = read_dictionary('./dictionaries/ethics.csv')
 politic_dict = read_dictionary('./dictionaries/politics.csv')
 negative_dict = read_dictionary('./dictionaries/negative.csv')
@@ -220,15 +223,13 @@ passive_dict = read_dictionary('./dictionaries/passive.csv')
 econ_dict = read_dictionary('./dictionaries/econ.csv')
 military_dict = read_dictionary('./dictionaries/military.csv')
 uncert_dict = read_dictionary('./dictionaries/uncertainty.csv')
-dim_dict = [len(positive_dict),
-len(negative_dict),
-len(econ_dict),
-len(politic_dict),
-len(passive_dict),
-len(military_dict),
-len(ethic_dict),
-len(uncert_dict)]
+
+'''
+2.b)
+'''
 n_dict = 9
+
+# build document-topic matrix
 counts = np.ndarray(shape=(len(stemmed),n_dict))
 for j in range(len(stemmed)):
     words = []
@@ -241,21 +242,18 @@ for j in range(len(stemmed)):
     counts[j,5] = calculate_sentiment_for_word_list(politic_dict,words)[0]
     counts[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
     counts[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
-
-    #also we can keep track on classif words with per document and dictionary with
-    #pos_words = calculate_sentiment_for_word_list(positive_dict,words)[1]
-
-#determine topic of each doc
-tot = []
+    #pos_words = calculate_sentiment_for_word_list(positive_dict,words)[1] # classif words
+#determine total nº classified words per doc
 for j in range(len(stemmed)):
     c = 0
     for i in range(7):
         c += counts[j,i]
     counts[j,8] = c
-
+          
+#document-topic matrix          
 cc = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
 
-#determine weight for each topic across all docs
+#%topic across all documents
 all_docs = cc.sum(axis=0)
 perc = np.ndarray(shape=(9,))
 for i in range(9):
@@ -263,20 +261,19 @@ for i in range(9):
 perc = pd.DataFrame(perc)
 perc.columns = ['%']
 perc.index =    ['positive', 'negative', 'uncertainty', 'passive', 'ethic', 'politics', 'economy', 'military', 'total']
-
 perc.sort_values(by='%', ascending=0)
 #so speeches are mostly positive and about politics and economy
 
+'''
+2.c)
+'''
 
 #let's study the evolution of speeches topics over years
 dd= pd.DataFrame(data)
 data_by_years = dd.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
 df3 = data_by_years.reset_index()
-df3.shape
-
-stemmed_y, processed_data_y = data_processing(df3)
-len(stemmed_y)
-#we now have 224 docs (one per year)
+stemmed_y=data_processing(df3['speech'])
+len(stemmed_y) #224 docs (one per year)
 
 counts_y = np.ndarray(shape=(len(stemmed_y),n_dict))
 for j in range(len(stemmed_y)):
@@ -290,16 +287,11 @@ for j in range(len(stemmed_y)):
     counts_y[j,5] = calculate_sentiment_for_word_list(politic_dict,words)[0]
     counts_y[j,6] = calculate_sentiment_for_word_list(econ_dict,words)[0]
     counts_y[j,7] = calculate_sentiment_for_word_list(military_dict,words)[0]
-
-len(negative_dict)
-#determine topic of each doc
-tot = []
 for j in range(len(stemmed_y)):
     c = 0
     for i in range(7):
         c += counts_y[j,i]
     counts_y[j,8] = c
-
 cc_y = pd.DataFrame(counts_y, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
 cc_y['pos']=100*cc_y['pos']/cc_y['total']
 cc_y['neg']=100*cc_y['neg']/cc_y['total']
@@ -309,126 +301,78 @@ cc_y['ethic']=100*cc_y['ethic']/cc_y['total']
 cc_y['polit']=100*cc_y['polit']/cc_y['total']
 cc_y['econ']=100*cc_y['econ']/cc_y['total']
 cc_y['milit']=100*cc_y['milit']/cc_y['total']
-cc_y['year'] =   df3['year']
+cc_y['total']=100
+cc_y['year'] =df3['year']
 
-cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-ax = cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution",usevlines=True)
-plt.axvline(2)
-
-superplot.axvline(x=2004)
-
-df=cf.datagen.lines(3,columns=['a','b','c'])
-ymin, ymax = ax.get_ylim()
-ax.vlines(x=2004, ymin=ymin, ymax=ymax-1, color='r')
-ax.show()
-
-ax
-cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5)).vlines(x=us_dates_pres, ymin=ymin, ymax=ymax-1, color='r')
-
-
-
-#every 32 years
-cc_y[0:32].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-cc_y[33:65].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-cc_y[66:98].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-cc_y[99:131].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-cc_y[132:164].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-cc_y[165:197].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-cc_y[197:230].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
-plt.show()
-
-#barplot
+#yearlydocs-topics matrix
+cc
+#df = cc_y.head(5)
 #df.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="bar").legend(loc='center left', bbox_to_anchor=(1, 0.5))
-
-#key dates in US history
-us_dates = [1789,1812,1829,1860,1861,1865,1868,1898,1917,1929,1941,1945]
-us_dates_exp = ['Washington elected','War on Britain','Jackson elected','Lincoln elected','Civil War','Lincoln is shot',
-                'US citizens equal rights','Maine explosion','WWI','Black Thursday','WWII','WWII ends']
-
-#http://www.dummies.com/education/history/american-history/key-dates-in-u-s-history/
-
-us_dates_pres = [1789,1797,1801,1809,1817,1825,1829,1837,1841,1841,1845,1849,1850,1853,1857,1861,1865,1869,1877,1881,1881,1885,1889,1893,1897,1901,1909,1913,1921,1923,1929,1933,1945,1953,1961,1963,1969,1974,1977,1981,1989,1993,2001,2009]
-us_pres = ['G.Washington','J.AdamsI','T.Jefferson','J.Madison','J.Monroe','J.Q.Adams','A.Jackson','M.V.Buren','W.H.Harrison', 'J.Tyler','J.K.Polk','Z.Taylor', 'M.Fillmore', 'F.Pierce', 'J.Buchanan', 'A. Lincoln', 'A.Johnson', 'U.S.Grant', 'R.B.Hayes',
-           'J.A.Garfield', 'C.A.Arthur', 'G.Cleveland', 'B.Harrison', 'G.Cleveland', 'W.McKinley', 'T.Roosevelt', 'W.H.Taft', 'W.Wilson', 'W.G.Harding', 'C.Coolidge', 'H.Hoover', 'F.D.Roosevelt', 'H.S.Truman', 'D.D.Eisenhower', 'J.F.Kennedy', 'L.B.Johnson',
-           'R.Nixon', 'G.Ford', 'J.Carter', 'R.Reagan', 'G.H.W.Bush', 'B.Clinton', 'G.W.Bush','B.Obama' ]
-
-#let's locate peaks of each series
-cc_y.sort(columns='pos',axis=0, ascending=False)[:3]
-#1815
-cc_y.sort(columns='neg',axis=0, ascending=False)[:3]
-#1908
-cc_y.sort(columns='unc',axis=0, ascending=False)[:3]
-#1805
-cc_y.sort(columns='passive',axis=0, ascending=False)[:3]
-#1822
-cc_y.sort(columns='ethic',axis=0, ascending=False)[:3]
-#1811
-cc_y.sort(columns='polit',axis=0, ascending=False)[:3]
-#1964
-cc_y.sort(columns='econ',axis=0, ascending=False)[:3]
-#1949
-cc_y.sort(columns='milit',axis=0, ascending=False)[:3]
-#1814
-
-
-#what happened in the years?
-X = cc_y['year']
-Y1 = cc_y['pos']
-plt.plot(X, Y1,   lw = 1., label = 'positive')
-
-Y2= cc_y['neg']
-Y3 = cc_y['unc']
-Y4= cc_y['passive']
-Y5 = cc_y['ethic']
-Y6= cc_y['polit']
-Y7 = cc_y['econ']
-Y8= cc_y['milit']
-plt.plot(X, Y2, lw = 1., label = 'negative')
-plt.plot(X, Y3,   lw = 1., label = 'uncertainty')
-plt.plot(X, Y4, lw = 1., label = 'passive')
-plt.plot(X, Y5,  lw = 1., label = 'ethics')
-plt.plot(X, Y6,  lw = 1., label = 'politics')
-plt.plot(X, Y7,  lw = 1., label = 'economics')
-plt.plot(X, Y8,  lw = 1., label = 'military')
-
-plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
 peak_dates = [1815,1908, 1805, 1811, 1964,1949,1814]
 peak_text = [4,5,1,2,7,6,3]
-
+X = cc_y['year']
+Y1 = cc_y['pos'];Y2= cc_y['neg'];Y3 = cc_y['unc'];Y4= cc_y['passive']
+Y5 = cc_y['ethic'];Y6= cc_y['polit'];Y7 = cc_y['econ']; Y8= cc_y['milit']
+plt.plot(X, Y1,   lw = 1., label = 'positive')
+plt.plot(X, Y2, lw = 1., label = 'negative')
+plt.plot(X, Y4, lw = 1., label = 'passive')
+plt.plot(X, Y6,  lw = 1., label = 'politics')
+plt.plot(X, Y7,  lw = 1., label = 'economics')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 for i in range(len(peak_dates)):
-    plt.axvline(peak_dates[i])
+    plt.axvline(peak_dates[i],linestyle="dashed", color="black", lw=0.6)
     plt.text(peak_dates[i],39,peak_text[i],rotation=0)
-
 plt.ylabel('%')
 plt.title('Speeches topics evolution', y=1.08)
-#US election dates
-us_dates_pres = [1789,1797,1801,1809,1817,1825,1829,1837,1841,1841,1845,1849,1850,1853,1857,1861,1865,1869,1877,1881,1881,1885,1889,1893,1897,1901,1909,1913,1921,1923,1929,1933,1945,1953,1961,1963,1969,1974,1977,1981,1989,1993,2001,2009]
-us_pres = ['G.Washington','J.AdamsI','T.Jefferson','J.Madison','J.Monroe','J.Q.Adams','A.Jackson','M.V.Buren','W.H.Harrison', 'J.Tyler','J.K.Polk','Z.Taylor', 'M.Fillmore', 'F.Pierce', 'J.Buchanan', 'A. Lincoln', 'A.Johnson', 'U.S.Grant', 'R.B.Hayes',
-           'J.A.Garfield', 'C.A.Arthur', 'G.Cleveland', 'B.Harrison', 'G.Cleveland', 'W.McKinley', 'T.Roosevelt', 'W.H.Taft', 'W.Wilson', 'W.G.Harding', 'C.Coolidge', 'H.Hoover', 'F.D.Roosevelt', 'H.S.Truman', 'D.D.Eisenhower', 'J.F.Kennedy', 'L.B.Johnson',
-           'R.Nixon', 'G.Ford', 'J.Carter', 'R.Reagan', 'G.H.W.Bush', 'B.Clinton', 'G.W.Bush','B.Obama' ]
+plt.savefig('evolution.png', bbox_inches='tight')
 
-#key dates in US history
-us_dates = [1812,1861,1865,1868,1898,1917,1929,1941,1945, 1974,1991,2001,2008]
-us_dates_exp = ['War on Britain','Civil War','Lincoln is shot',
-                'US citizens equal rights','Maine explosion',
-                'WWI','Black Thursday','WWII','WWII ends',
-                'Watergate scandal','Iraq attacks','WTC attack', 'Great Recession']
+#more on detail
+peak_dates = [ 1805, 1811,1814,1815]
+peak_text = [1,2,3,4]
+X = cc_y['year']
+Y1 = cc_y['pos'];Y2= cc_y['neg'];Y3 = cc_y['unc'];Y4= cc_y['passive']
+Y5 = cc_y['ethic'];Y6= cc_y['polit'];Y7 = cc_y['econ']; Y8= cc_y['milit']
+plt.plot(X[0:33], Y1[0:33],   lw = 1., label = 'positive')
+plt.plot(X[0:33], Y2[0:33], lw = 1., label = 'negative')
+plt.plot(X[0:33], Y4[0:33], lw = 1., label = 'passive')
+plt.plot(X[0:33], Y6[0:33],  lw = 1., label = 'politics')
+plt.plot(X[0:33], Y7[0:33],  lw = 1., label = 'economics')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+for i in range(len(peak_dates)):
+    plt.axvline(peak_dates[i], linestyle="dashed", color="black", lw=0.6)
+    plt.text(peak_dates[i],38,peak_text[i],rotation=0)
+plt.ylabel('%')
+plt.title('Speeches topics evolution', y=1.08)
+plt.savefig('1800s.png', bbox_inches='tight')
 
-#1) UNCERTAINTY: 1805 end of First Barbary War, Detroit burns to the ground
-        #end of 1802-1804 recession
+peak_dates = [ 1908,1949,1964]
+peak_text = [5,6,7]
+X = cc_y['year']
+Y1 = cc_y['pos'];Y2= cc_y['neg'];Y3 = cc_y['unc'];Y4= cc_y['passive']
+Y5 = cc_y['ethic'];Y6= cc_y['polit'];Y7 = cc_y['econ']; Y8= cc_y['milit']
+plt.plot(X[100:190], Y1[100:190],   lw = 1., label = 'positive')
+plt.plot(X[100:190], Y2[100:190], lw = 1., label = 'negative')
+plt.plot(X[100:190], Y4[100:190], lw = 1., label = 'passive')
+plt.plot(X[100:190], Y6[100:190],  lw = 1., label = 'politics')
+plt.plot(X[100:190], Y7[100:190],  lw = 1., label = 'economics')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+for i in range(len(peak_dates)):
+    plt.axvline(peak_dates[i], linestyle="dashed", color="black", lw=0.6)
+    plt.text(peak_dates[i],34,peak_text[i],rotation=0)
+plt.ylabel('%')
+plt.title('Speeches topics evolution', y=1.08)
+plt.savefig('1900s.png', bbox_inches='tight')
+#1) UNCERTAINTY: 1805 end of First Barbary War, #end of 1802-1804 recession
 #2) ETHICS: 1811: Slave revolt in Louisiana, – Battle of Tippecanoe: American troops led by William Henry Harrison defeat the Native American chief Tecumseh.
 #3) MILITAR: 1814: Anglo-American war 1812-1815
 #4) POSITIVE 1815: Treaty of Ghent (end of Anglo-American war)
 #5) NEGATIVE 1908:  Panic of 1907, the fallout from the panic led to Congress creating the Federal Reserve System
 #6) ECONOMY: 1949: Recession of 1949
-#7) POLITICS: 1964: Legislation in the U.S. Congress on Civil Rights is passed. It banned discrimination in jobs, voting and accommodations.
-#                The Tonkin Resolution is passed by the United States Congress, authorizing broad powers to the president to take action in Vietnam after North Vietnamese boats had attacked two United States destroyers five days earlier.
+#7) POLITICS: 1964: Legislation in the U.S. Congress on Civil Rights is passed. It banned discrimination in jobs, voting and accommodations. The Tonkin Resolution is passed by the United States Congress, authorizing broad powers to the president to take action in Vietnam after North Vietnamese boats had attacked two United States destroyers five days earlier.
 
+    
 
-#https://en.wikipedia.org/wiki/List_of_recessions_in_the_United_States
-#http://americasbesthistory.com/abhtimeline1940.html
 '''
 QUESTION 3
 '''
