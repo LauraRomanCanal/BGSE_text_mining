@@ -311,7 +311,7 @@ cc_y['econ']=100*cc_y['econ']/cc_y['total']
 cc_y['milit']=100*cc_y['milit']/cc_y['total']
 cc_y['year'] =   df3['year']
 
- cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
+cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
 ax = cc_y.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution",usevlines=True)
 plt.axvline(2)
 
@@ -336,8 +336,7 @@ cc_y[132:164].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","
 cc_y[165:197].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
 cc_y[197:230].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="line",title="Speeches topics evolution").legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-
-
+plt.show()
 
 #barplot
 #df.plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","econ","milit"], kind="bar").legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -346,11 +345,12 @@ cc_y[197:230].plot(x="year", y=["pos", "neg", "unc", "passive","ethic","polit","
 us_dates = [1789,1812,1829,1860,1861,1865,1868,1898,1917,1929,1941,1945]
 us_dates_exp = ['Washington elected','War on Britain','Jackson elected','Lincoln elected','Civil War','Lincoln is shot',
                 'US citizens equal rights','Maine explosion','WWI','Black Thursday','WWII','WWII ends']
-http://www.dummies.com/education/history/american-history/key-dates-in-u-s-history/
+
+#http://www.dummies.com/education/history/american-history/key-dates-in-u-s-history/
 
 us_dates_pres = [1789,1797,1801,1809,1817,1825,1829,1837,1841,1841,1845,1849,1850,1853,1857,1861,1865,1869,1877,1881,1881,1885,1889,1893,1897,1901,1909,1913,1921,1923,1929,1933,1945,1953,1961,1963,1969,1974,1977,1981,1989,1993,2001,2009]
-us_pres = ['G.Washington','J.AdamsI','T.Jefferson','J.Madison','J.Monroe','J.Q.Adams','A.Jackson','M.V.Buren','W.H.Harrison', 'J.Tyler','J.K.Polk','Z.Taylor', 'M.Fillmore', 'F.Pierce', 'J.Buchanan', 'A. Lincoln', 'A.Johnson', 'U.S.Grant', 'R.B.Hayes', 
-           'J.A.Garfield', 'C.A.Arthur', 'G.Cleveland', 'B.Harrison', 'G.Cleveland', 'W.McKinley', 'T.Roosevelt', 'W.H.Taft', 'W.Wilson', 'W.G.Harding', 'C.Coolidge', 'H.Hoover', 'F.D.Roosevelt', 'H.S.Truman', 'D.D.Eisenhower', 'J.F.Kennedy', 'L.B.Johnson', 
+us_pres = ['G.Washington','J.AdamsI','T.Jefferson','J.Madison','J.Monroe','J.Q.Adams','A.Jackson','M.V.Buren','W.H.Harrison', 'J.Tyler','J.K.Polk','Z.Taylor', 'M.Fillmore', 'F.Pierce', 'J.Buchanan', 'A. Lincoln', 'A.Johnson', 'U.S.Grant', 'R.B.Hayes',
+           'J.A.Garfield', 'C.A.Arthur', 'G.Cleveland', 'B.Harrison', 'G.Cleveland', 'W.McKinley', 'T.Roosevelt', 'W.H.Taft', 'W.Wilson', 'W.G.Harding', 'C.Coolidge', 'H.Hoover', 'F.D.Roosevelt', 'H.S.Truman', 'D.D.Eisenhower', 'J.F.Kennedy', 'L.B.Johnson',
            'R.Nixon', 'G.Ford', 'J.Carter', 'R.Reagan', 'G.H.W.Bush', 'B.Clinton', 'G.W.Bush','B.Obama' ]
 
 #let's locate peaks of each series
@@ -394,29 +394,27 @@ plt.plot(X, Y8,  lw = 1., label = 'military')
 
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
+peak_dates = [1815,1908, 1805, 1811, 1964,1949,1814]
+peak_text = [4,5,1,2,7,6,3]
+
 for i in range(len(peak_dates)):
     plt.axvline(peak_dates[i])
     plt.text(peak_dates[i],39,peak_text[i],rotation=0)
 
 plt.ylabel('%')
-plt.title('Speeches topics evolution', y=1.08)    
-#US election dates  
+plt.title('Speeches topics evolution', y=1.08)
+#US election dates
 us_dates_pres = [1789,1797,1801,1809,1817,1825,1829,1837,1841,1841,1845,1849,1850,1853,1857,1861,1865,1869,1877,1881,1881,1885,1889,1893,1897,1901,1909,1913,1921,1923,1929,1933,1945,1953,1961,1963,1969,1974,1977,1981,1989,1993,2001,2009]
-us_pres = ['G.Washington','J.AdamsI','T.Jefferson','J.Madison','J.Monroe','J.Q.Adams','A.Jackson','M.V.Buren','W.H.Harrison', 'J.Tyler','J.K.Polk','Z.Taylor', 'M.Fillmore', 'F.Pierce', 'J.Buchanan', 'A. Lincoln', 'A.Johnson', 'U.S.Grant', 'R.B.Hayes', 
-           'J.A.Garfield', 'C.A.Arthur', 'G.Cleveland', 'B.Harrison', 'G.Cleveland', 'W.McKinley', 'T.Roosevelt', 'W.H.Taft', 'W.Wilson', 'W.G.Harding', 'C.Coolidge', 'H.Hoover', 'F.D.Roosevelt', 'H.S.Truman', 'D.D.Eisenhower', 'J.F.Kennedy', 'L.B.Johnson', 
+us_pres = ['G.Washington','J.AdamsI','T.Jefferson','J.Madison','J.Monroe','J.Q.Adams','A.Jackson','M.V.Buren','W.H.Harrison', 'J.Tyler','J.K.Polk','Z.Taylor', 'M.Fillmore', 'F.Pierce', 'J.Buchanan', 'A. Lincoln', 'A.Johnson', 'U.S.Grant', 'R.B.Hayes',
+           'J.A.Garfield', 'C.A.Arthur', 'G.Cleveland', 'B.Harrison', 'G.Cleveland', 'W.McKinley', 'T.Roosevelt', 'W.H.Taft', 'W.Wilson', 'W.G.Harding', 'C.Coolidge', 'H.Hoover', 'F.D.Roosevelt', 'H.S.Truman', 'D.D.Eisenhower', 'J.F.Kennedy', 'L.B.Johnson',
            'R.Nixon', 'G.Ford', 'J.Carter', 'R.Reagan', 'G.H.W.Bush', 'B.Clinton', 'G.W.Bush','B.Obama' ]
 
 #key dates in US history
 us_dates = [1812,1861,1865,1868,1898,1917,1929,1941,1945, 1974,1991,2001,2008]
 us_dates_exp = ['War on Britain','Civil War','Lincoln is shot',
                 'US citizens equal rights','Maine explosion',
-                'WWI','Black Thursday','WWII','WWII ends', 
+                'WWI','Black Thursday','WWII','WWII ends',
                 'Watergate scandal','Iraq attacks','WTC attack', 'Great Recession']
-
-
-peak_dates = [1815,1908, 1805, 1811, 1964,1949,1814]
-peak_text = [4,5,1,2,7,6,3]
-
 
 #1) UNCERTAINTY: 1805 end of First Barbary War, Detroit burns to the ground
         #end of 1802-1804 recession
