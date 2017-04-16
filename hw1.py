@@ -249,8 +249,8 @@ for j in range(len(stemmed)):
     for i in range(7):
         c += counts[j,i]
     counts[j,8] = c
-          
-#document-topic matrix          
+
+#document-topic matrix
 cc = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit', 'total'])
 
 #%topic across all documents
@@ -270,7 +270,7 @@ perc.sort_values(by='%', ascending=0)
 dd= pd.DataFrame(data)
 data_by_years = dd.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
 df3 = data_by_years.reset_index()
-stemmed_y=data_processing(df3['speech'])
+stemmed_y, processed_data = data_processing(df3)
 len(stemmed_y) #224 docs (one per year)
 
 counts_y = np.ndarray(shape=(len(stemmed_y),n_dict))
@@ -373,7 +373,7 @@ plt.savefig('1900s.png', bbox_inches='tight')
 
 ''' unemployment'''
 # compute correlation between annual unemployment rate and p.e. uncertainty
-file = pd.read_table("annual_unemployment.txt",header=None)
+file = pd.read_table("timeseries/annual_unemployment.txt",header=None)
 #file1 = pd.read_table("jan_unempl.txt",header=None)
 #file1.applymap(np.isreal) #check if numeric vals
 unempl = pd.DataFrame(file[1])
@@ -393,24 +393,27 @@ corr_unemployment[2] = ['uncertainty', 'positive', 'negative', 'passive', 'econo
 #if using january data correlation of 0.07 and pval 0.57...
 
 '''inflation rate'''
-file2 = pd.read_table("inflation_rate.txt",header=None)
+infl = pd.read_table("timeseries/inflation_rate.txt",header=None)
+infl_post1948 = infl[infl[0] >= 1948]
+
 #file2.applymap(np.isreal) check if numeric vals
-infl = pd.DataFrame(file2[1])
+#infl = pd.DataFrame(file2[1])
 corr_inflation = pd.DataFrame([infl.corrwith(uncert),infl.corrwith(posit),infl.corrwith(negat),
                infl.corrwith(passive),infl.corrwith(econ),infl.corrwith(polit),
                 infl.corrwith(milit)])
 corr_inflation[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']
-#correlation between annual inflation rate and uncertainty is negative as expected, although vv weak. 
+#correlation between annual inflation rate and uncertainty is negative as expected, although vv weak.
 
 from scipy.stats.stats import pearsonr
 
-#correlation and p-value 
+#correlation and p-value
 uu = uncert.values
 
 une = unempl[1].values
 pearsonr(une, uu) #unemployment - uncertainty
-        
-ii = infl[1].values
+
+ii = infl_post1948[1].values
+len(uu)
 pearsonr(ii, uu) #inflation - uncertainty
 
 pp = posit.values
@@ -420,17 +423,17 @@ ec = econ.values
 po = polit.values
 mi = milit.values
 
-corr_pvals = [pearsonr(ii, pp) ,    
-pearsonr(ii, nn)        ,
-pearsonr(ii, pa) ,
-pearsonr(ii, po)  ,   
-pearsonr(ii, mi)   ,     
-pearsonr(ii, ec) ]
+corr_pvals = [pearsonr(ii, pp),
+pearsonr(ii, nn),
+pearsonr(ii, pa),
+pearsonr(ii, po),
+pearsonr(ii, mi),
+pearsonr(ii, ec)]
 
 '''2.d)'''
-    
-    
-    
+
+
+
 '''
 QUESTION 3
 '''
@@ -462,6 +465,8 @@ pres    = sorted(list ( set(data.loc[data.year > 1860].president)))
 party   = ['rep']*3 + ['dem']*3 + ['rep']*8 + ['dem']*3 + ['rep']*3 + ['dem']*1 + ['rep']*2 + ['dem'] + ['rep'] + ['dem']*2
 
 pres_party = dict(zip(pres, party))
+
+stemmed, processed_data = data_processing(data)
 
 data_post1860 = processed_data.loc[processed_data.year > 1860]
 data_post1860 = data_post1860.reset_index(drop=True)
@@ -513,6 +518,64 @@ low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
 print(np.mean(low_rank_similarity_within_dem))
 print(np.mean(low_rank_similarity_within_rep))
 print(np.mean(low_rank_similarity_between_parties))
+
+'''
+Now we will do the same analysis for presidents post 1965. We choose 1965 because the civil rights act represents a turning point in the ideology of the democratic party, and the start of the 'southern strategy' of republican presidential candidates. This means that (hopefully), both democrats and republicans will be more homogeneous in this analysis.
+'''
+
+data_post1965 = processed_data.loc[processed_data.year >= 1965]
+data_post1965 = data_post1965.reset_index(drop=True)
+parties = [pres_party[i] for i in data_post1965.president]
+data_post1965 = data_post1965.assign(party=parties)
+
+stemmed_post1965, processed_post1965 = data_processing(data_post1965)
+
+stemmed_post1965 = custom_stopword_del(stemmed_post1965, our_stopwords)
+stemmed_post1965, processed_post1965 = remove_zerolen_strings(stemmed_post1965, processed_post1965)
+
+parties_post1965 = [i for i in processed_post1965.party]
+dem_idx = [i for i in range(len(parties_post1965)) if parties_post1965[i] == 'dem']
+rep_idx = [i for i in range(len(parties_post1965)) if parties_post1965[i] == 'rep']
+
+tf_idf_post1965 = make_TF_IDF(stemmed_post1965)
+
+cos_sim = cosine_similarity(tf_idf_post1965)
+
+similarity_within_dem = cos_sim[dem_idx,:][:,dem_idx]
+similarity_within_rep = cos_sim[rep_idx,:][:,rep_idx]
+similarity_between_parties = cos_sim[dem_idx,:][:,rep_idx]
+
+print(np.mean(similarity_within_dem))
+print(np.mean(similarity_within_rep))
+print(np.mean(similarity_between_parties))
+
+np.mean(similarity_within_dem)/np.mean(similarity_between_parties)
+np.mean(similarity_within_rep)/np.mean(similarity_between_parties)
+
+'''
+Now do singular value decomposition
+'''
+
+U, S, V = svds(tf_idf_post1965, k = 200)
+
+low_rank_approx = U.dot(np.diag(S)).dot(V)
+
+low_rank_cos_sim = cosine_similarity(low_rank_approx)
+
+low_rank_similarity_within_dem = low_rank_cos_sim[dem_idx,:][:,dem_idx]
+low_rank_similarity_within_rep = low_rank_cos_sim[rep_idx,:][:,rep_idx]
+low_rank_similarity_between_parties = low_rank_cos_sim[dem_idx,:][:,rep_idx]
+
+print(np.mean(low_rank_similarity_within_dem))
+print(np.mean(low_rank_similarity_within_rep))
+print(np.mean(low_rank_similarity_between_parties))
+
+np.mean(low_rank_similarity_within_dem)/np.mean(low_rank_similarity_between_parties)
+np.mean(low_rank_similarity_within_rep)/np.mean(low_rank_similarity_between_parties)
+
+'''
+We get here that without latent semantic analysis democrats are on average 1.5% more similar to each other than they are to republicans, and republicans are 8.2% more similar to each other than they are to democrats. However, when we peform LSA we get that democrats are 0.11% more similar to each other than they are to republicans and republicans are 8.2% more similar to each other than they are to democrats. Therefore, LSA does not give us a sharper distinction between parties, even when we concentrate on the last 50 years.
+'''
 
 '''
 QUESTION 4
