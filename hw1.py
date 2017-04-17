@@ -20,7 +20,7 @@ from numpy.linalg import svd
 from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
-#os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
+os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 
 #PRE-PROCESSING DATA
 ###############################################################################
@@ -430,22 +430,26 @@ pearsonr(ii, ec) ]
 
 '''2.d)'''
 #compute the content of each document using term weighting - tf-idf?
-from scipy.special import xlogy
+#from scipy.special import xlogy
 
-def dict_rank(stemmed, dictionary, use_tf_idf, n):        
+###############################################################################
+def dict_rank(data, dictionary, use_tf_idf, n):  
+
+    stemmed, processed_data = data_processing(data)
     vocab = get_vocab(stemmed)
-    x = make_count(stemmed)
-    tf_matrix = xlogy(np.sign(x), x) / np.log(2)
+    dt_matrix = make_count(stemmed)
+    #tf_matrix = xlogy(np.sign(x), x) / np.log(2)
+    
     #tf_matrix.shape
 
     idf = list(make_IDF(stemmed, vocab).values())
-    tfidf_matrix = tf_matrix * idf
+    tfidf_matrix = dt_matrix * idf
 
     if (use_tf_idf):
-        dtm = tf_matrix
-    else:
         dtm = tfidf_matrix
-            
+    else:
+        dtm = dt_matrix
+
 # Get rid of words in the document term matrix not in the dictionary
     dict_tokens_set = set(item for item in dictionary)
     intersection = list(set(dict_tokens_set) & set(vocab))
@@ -458,36 +462,43 @@ def dict_rank(stemmed, dictionary, use_tf_idf, n):
 
 # Order them and return the n top documents
     order = sorted(range(len(sums)), key = lambda k: sums[k], reverse=True)
-    ordered_doc_data_n = [None] * len(dtm)
+    #ordered_doc_data_n = [None] * len(dtm)
+    ordered_year_data_n = [None] * len(dtm)
     ordered_sums = np.zeros(len(dtm))
 
     counter = 0        
     for num in order:
-        ordered_doc_data_n[counter] = stemmed[num]
+        #ordered_doc_data_n[counter] = stemmed[num]
+        ordered_year_data_n[counter] = data.year[num]
         ordered_sums[counter] = sums[num]
         counter += 1
 
-    return list(zip(ordered_doc_data_n[0:n], ordered_sums[0:n]))
+    return list((ordered_year_data_n[0:n], ordered_sums[0:n]))
+###############################################################################
+
+
+data= pd.DataFrame(data)
+data_by_years = data.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
+df = data_by_years.reset_index()
 
 dictionary =positive_dict
-scored_docs = dict_rank(stemmed, dictionary, False, 10)  
-#scored_docs = list(zip(ordered_doc_data_n[0:n], ordered_sums[0:n]))   
+#dictionary =negative_dict
 
 # Document term matrix
+sorted_years,tf_score = dict_rank(df, dictionary, False, 10) 
 print ("The highest ranked documents using DTM are:")
-for i in range(len(scored_docs)):
+for i in range(len(sorted_years)):
     #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
-    print ("{0} {1} {2}".format(data.year[i], data.president[i], scored_docs[i][1]))
+    print ("{0} {1}".format(sorted_years[i], tf_score[i]))
 
-
-# TF-IDF
-tfidf_scored_docs = dict_rank(stemmed, dictionary, True, 10)
+#TF-IDF
+sorted_year_2, tfidf_score = dict_rank(df, dictionary, True, 10)  
 print ("The highest ranked documents using TF-IDF are:")
-for i in range(len(tfidf_scored_docs)):
+for i in range(len(sorted_year_2)):
     #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
-    print ("{0} {1} {2}".format(data.year[i], data.president[i], scored_docs[i][1]))
+    print ("{0} {1} ".format(sorted_year_2[i], tfidf_score[i]))
 
-#should group docs by president and then apply this method with each of the 9 dictionaries
+
 '''
 QUESTION 3
 '''
