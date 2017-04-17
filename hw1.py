@@ -54,8 +54,8 @@ def remove_zerolen_strings(stemmed, data):
     stemmed = [i for i in stemmed if len(i) > 0]
     data = data.drop(data.index[idx])
     data = data.reset_index(drop=True)
-    return [stemmed, data]
-
+    #return [stemmed, data]
+    return (stemmed, data)
 def data_processing(data):
     '''
     Put together all steps in data processing. NOTE data must have column 'speech'
@@ -66,7 +66,8 @@ def data_processing(data):
     sp_tkn = stopword_del(sp_tkn)
     stemmed = my_stem(sp_tkn)
     stemmed, data = remove_zerolen_strings(stemmed, data)
-    return [stemmed, data]
+    #return [stemmed, data] doesn't work to me
+    return (stemmed, data)
 ###############################################################################
 
 # CALCULATING TF-IDF SCORES
@@ -428,9 +429,65 @@ pearsonr(ii, mi)   ,
 pearsonr(ii, ec) ]
 
 '''2.d)'''
-    
-    
-    
+#compute the content of each document using term weighting - tf-idf?
+from scipy.special import xlogy
+
+def dict_rank(stemmed, dictionary, use_tf_idf, n):        
+    vocab = get_vocab(stemmed)
+    x = make_count(stemmed)
+    tf_matrix = xlogy(np.sign(x), x) / np.log(2)
+    #tf_matrix.shape
+
+    idf = list(make_IDF(stemmed, vocab).values())
+    tfidf_matrix = tf_matrix * idf
+
+    if (use_tf_idf):
+        dtm = tf_matrix
+    else:
+        dtm = tfidf_matrix
+            
+# Get rid of words in the document term matrix not in the dictionary
+    dict_tokens_set = set(item for item in dictionary)
+    intersection = list(set(dict_tokens_set) & set(vocab))
+    vec_positions = [int(token in intersection) for token in vocab] 
+
+# Get the score of each document
+    sums = np.zeros(len(dtm))
+    for j in range(len(dtm)):
+        sums[j] = sum([a * b for a, b in zip(dtm[j], vec_positions)])
+
+# Order them and return the n top documents
+    order = sorted(range(len(sums)), key = lambda k: sums[k], reverse=True)
+    ordered_doc_data_n = [None] * len(dtm)
+    ordered_sums = np.zeros(len(dtm))
+
+    counter = 0        
+    for num in order:
+        ordered_doc_data_n[counter] = stemmed[num]
+        ordered_sums[counter] = sums[num]
+        counter += 1
+
+    return list(zip(ordered_doc_data_n[0:n], ordered_sums[0:n]))
+
+dictionary =positive_dict
+scored_docs = dict_rank(stemmed, dictionary, False, 10)  
+#scored_docs = list(zip(ordered_doc_data_n[0:n], ordered_sums[0:n]))   
+
+# Document term matrix
+print ("The highest ranked documents using DTM are:")
+for i in range(len(scored_docs)):
+    #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
+    print ("{0} {1} {2}".format(data.year[i], data.president[i], scored_docs[i][1]))
+
+
+# TF-IDF
+tfidf_scored_docs = dict_rank(stemmed, dictionary, True, 10)
+print ("The highest ranked documents using TF-IDF are:")
+for i in range(len(tfidf_scored_docs)):
+    #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
+    print ("{0} {1} {2}".format(data.year[i], data.president[i], scored_docs[i][1]))
+
+#should group docs by president and then apply this method with each of the 9 dictionaries
 '''
 QUESTION 3
 '''
