@@ -20,7 +20,7 @@ from numpy.linalg import svd
 from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
-#os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
+os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 
 #PRE-PROCESSING DATA
 ###############################################################################
@@ -54,8 +54,8 @@ def remove_zerolen_strings(stemmed, data):
     stemmed = [i for i in stemmed if len(i) > 0]
     data = data.drop(data.index[idx])
     data = data.reset_index(drop=True)
-    return [stemmed, data]
-
+    #return [stemmed, data]
+    return (stemmed, data)
 def data_processing(data):
     '''
     Put together all steps in data processing. NOTE data must have column 'speech'
@@ -66,7 +66,8 @@ def data_processing(data):
     sp_tkn = stopword_del(sp_tkn)
     stemmed = my_stem(sp_tkn)
     stemmed, data = remove_zerolen_strings(stemmed, data)
-    return [stemmed, data]
+    #return [stemmed, data] doesn't work to me
+    return (stemmed, data)
 ###############################################################################
 
 # CALCULATING TF-IDF SCORES
@@ -432,6 +433,74 @@ pearsonr(ii, ec)]
 
 '''2.d)'''
 
+#compute the content of each document using term weighting - tf-idf?
+#from scipy.special import xlogy
+
+###############################################################################
+def dict_rank(data, dictionary, use_tf_idf, n):
+
+    stemmed, processed_data = data_processing(data)
+    vocab = get_vocab(stemmed)
+    dt_matrix = make_count(stemmed)
+    #tf_matrix = xlogy(np.sign(x), x) / np.log(2)
+
+    #tf_matrix.shape
+
+    idf = list(make_IDF(stemmed, vocab).values())
+    tfidf_matrix = dt_matrix * idf
+
+    if (use_tf_idf):
+        dtm = tfidf_matrix
+    else:
+        dtm = dt_matrix
+
+# Get rid of words in the document term matrix not in the dictionary
+    dict_tokens_set = set(item for item in dictionary)
+    intersection = list(set(dict_tokens_set) & set(vocab))
+    vec_positions = [int(token in intersection) for token in vocab]
+
+# Get the score of each document
+    sums = np.zeros(len(dtm))
+    for j in range(len(dtm)):
+        sums[j] = sum([a * b for a, b in zip(dtm[j], vec_positions)])
+
+# Order them and return the n top documents
+    order = sorted(range(len(sums)), key = lambda k: sums[k], reverse=True)
+    #ordered_doc_data_n = [None] * len(dtm)
+    ordered_year_data_n = [None] * len(dtm)
+    ordered_sums = np.zeros(len(dtm))
+
+    counter = 0
+    for num in order:
+        #ordered_doc_data_n[counter] = stemmed[num]
+        ordered_year_data_n[counter] = data.year[num]
+        ordered_sums[counter] = sums[num]
+        counter += 1
+
+    return list((ordered_year_data_n[0:n], ordered_sums[0:n]))
+###############################################################################
+
+
+data= pd.DataFrame(data)
+data_by_years = data.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
+df = data_by_years.reset_index()
+
+dictionary =positive_dict
+#dictionary =negative_dict
+
+# Document term matrix
+sorted_years,tf_score = dict_rank(df, dictionary, False, 10)
+print ("The highest ranked documents using DTM are:")
+for i in range(len(sorted_years)):
+    #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
+    print ("{0} {1}".format(sorted_years[i], tf_score[i]))
+
+#TF-IDF
+sorted_year_2, tfidf_score = dict_rank(df, dictionary, True, 10)
+print ("The highest ranked documents using TF-IDF are:")
+for i in range(len(sorted_year_2)):
+    #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
+    print ("{0} {1} ".format(sorted_year_2[i], tfidf_score[i]))
 
 
 '''
