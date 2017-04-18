@@ -442,12 +442,12 @@ def dict_rank(data, dictionary, use_tf_idf, n):
     stemmed, processed_data = data_processing(data)
     vocab = get_vocab(stemmed)
     dt_matrix = make_count(stemmed)
-    #tf_matrix = xlogy(np.sign(x), x) / np.log(2)
+    tf_matrix = 1 + xlogy(np.sign(dt_matrix), dt_matrix) / np.log(2)
 
     #tf_matrix.shape
 
     idf = list(make_IDF(stemmed, vocab).values())
-    tfidf_matrix = dt_matrix * idf
+    tfidf_matrix = tf_matrix * idf
 
     if (use_tf_idf):
         dtm = tfidf_matrix
