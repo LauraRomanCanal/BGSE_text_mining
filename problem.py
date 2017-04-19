@@ -83,9 +83,14 @@ def dt_matrix(stemmed,dictionary):
 pos_r = dt_matrix(stemmed_y,positive_dict)
 neg_r = dt_matrix(stemmed_y,negative_dict)
 unc_r = dt_matrix(stemmed_y, uncert_dict)
+pa_r = dt_matrix(stemmed_y, passive_dict)
 eth_r = dt_matrix(stemmed_y, ethic_dict)
 pol_r = dt_matrix(stemmed_y, politic_dict)
 ec_r  = dt_matrix(stemmed_y, econ_dict)
 mil_r = dt_matrix(stemmed_y, military_dict)
 
-method2 = np.transpose([pos_r,neg_r, unc_r,eth_r, pol_r, ec_r, mil_r ])
+method2 = np.transpose([pos_r,neg_r, unc_r,pa_r, eth_r, pol_r, ec_r, mil_r ])
+m2 = pd.DataFrame(method2, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit'])
+m2['total'] = m2.sum(axis=1)
+
+method1
