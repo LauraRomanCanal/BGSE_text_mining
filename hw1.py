@@ -21,7 +21,7 @@ from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 
 os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
-
+os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
 #PRE-PROCESSING DATA
 ###############################################################################
 def my_tokeniser(speeches):
@@ -136,36 +136,41 @@ data = pd.read_table("speech_data_extend.txt",encoding="utf-8")
 stemmed, processed_data = data_processing(data)
 
 #tf scores
-vocab = get_vocab(stemmed)
-tf_scores = corpus_tf(stemmed)
 
-sort_tf = sorted(tf_scores,reverse=True)
-ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
-vocab_s = [vocab[i] for i in ind_tf]
+def custom_stopword_del(stemmed, data):
+    vocab = get_vocab(stemmed)
+    tf_scores = corpus_tf(stemmed)
 
-term_sorttf = pd.DataFrame(
-    {'term': vocab_s,
-    'tf': sort_tf
-    })
+    sort_tf = sorted(tf_scores,reverse=True)
+    ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
+    vocab_s = [vocab[i] for i in ind_tf]
 
-#tf-idf scores
-tf_idf_scores = corpus_tf_idf(stemmed)
+    term_sorttf = pd.DataFrame(
+        {'term': vocab_s,
+        'tf': sort_tf
+        })
 
-sort_tfidf = sorted(tf_idf_scores,reverse=True)
-ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
-vocab_sidf = [vocab[i] for i in ind_tfidf]
-#sorted tf_idf
+    #tf-idf scores
+    tf_idf_scores = corpus_tf_idf(stemmed)
 
-term_sortfidf = pd.DataFrame(
-    {'term': vocab_sidf,
-    'tf-idf': sort_tfidf
-    })
+    sort_tfidf = sorted(tf_idf_scores,reverse=True)
+    ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
+    vocab_sidf = [vocab[i] for i in ind_tfidf]
+    #sorted tf_idf
+
+    term_sortfidf = pd.DataFrame(
+        {'term': vocab_sidf,
+        'tf-idf': sort_tfidf
+        })
 
 
-# Remove context-specific stopwords
-our_stopwords = set(vocab_sidf[0:2000])
-stemmed = custom_stopword_del(stemmed, our_stopwords)
-stemmed, processed_data = remove_zerolen_strings(stemmed, processed_data)
+    # Remove context-specific stopwords
+    our_stopwords = set(vocab_sidf[0:2000])
+    stemmed = custom_stopword_del(stemmed, our_stopwords)
+    stemmed, processed_data = remove_zerolen_strings(stemmed, data)
+
+
+
 
 '''
  QUESTION 2
