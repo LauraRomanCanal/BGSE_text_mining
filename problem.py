@@ -37,35 +37,36 @@ def docs_dict_matrix(stem,positive_dict,negative_dict,ethic_dict,politic_dict,ec
     counts['total'] = counts.sum(axis=1)
     return counts
 
-method1 = docs_dict_matrix(stemmed_y,positive_dict,negative_dict,ethic_dict,politic_dict,econ_dict,military_dict,uncert_dict,passive_dict )
 
 ''' method 2'''
 ################################################################################################################################################
-def ranking(stemmed,data,dictionary, use_tf_idf, n):  
+def make_count(stemmed):
+    vocab = get_vocab(stemmed)
+    D = len(stemmed)
+    n = len(vocab)
+    idx = dict(zip(vocab,range(len(vocab))))
+    count_matrix = np.ndarray(shape=(D,n))
+
+    for i in range(len(stemmed)):
+        for j in set(stemmed[i]):
+            count_matrix[i,idx[j]] = stemmed[i].count(j)
+    return count_matrix
+
+def make_TF_IDF(stemmed):
+    # Calculates TF-IDF matrix
+    vocab = get_vocab(stemmed)
+    D = len(stemmed)
+    idx = dict(zip(vocab,range(len(vocab))))
+    IDF_dict = make_IDF(stemmed,vocab)
+    tf_idf = np.ndarray(shape=(D,len(vocab)))
+
+    for i in range(len(stemmed)):
+        for j in set(stemmed[i]):
+            tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
+    return tf_idf
 
 
-    if (use_tf_idf):
-        dtm = make_TF_IDF(stemmed)
-    else:
-        dtm = make_count(stemmed)
-
-# Scoring of each document for a given dictionary and method (count or tfidf)
-    sums = dt_matrix(stemmed,dictionary,dtm)
-    
-# Order them and return the n top documents
-    order = sorted(range(len(sums)), key = lambda k: sums[k], reverse=True)
-    ordered_year_data_n = [None] * len(dtm)
-    ordered_sums = np.zeros(len(dtm))
-
-    counter = 0        
-    for num in order:
-        ordered_year_data_n[counter] = data.year[num]
-        ordered_sums[counter] = sums[num]
-        counter += 1
-
-    return list((ordered_year_data_n[0:n], ordered_sums[0:n]))
-  
-def dt_matrix(stemmed,dictionary):
+def dt_matrix(stemmed,dictionary,dtm):
     vocab = get_vocab(stemmed)
    
 # Get rid of words in the document term matrix not in the dictionary
@@ -80,17 +81,42 @@ def dt_matrix(stemmed,dictionary):
         sums[j] = sum([a * b for a, b in zip(dtm[j], vec_positions)])
     return sums
 
-pos_r = dt_matrix(stemmed_y,positive_dict)
-neg_r = dt_matrix(stemmed_y,negative_dict)
-unc_r = dt_matrix(stemmed_y, uncert_dict)
-pa_r = dt_matrix(stemmed_y, passive_dict)
-eth_r = dt_matrix(stemmed_y, ethic_dict)
-pol_r = dt_matrix(stemmed_y, politic_dict)
-ec_r  = dt_matrix(stemmed_y, econ_dict)
-mil_r = dt_matrix(stemmed_y, military_dict)
+##########################################################################################
+
+data_by_years= pd.DataFrame(data)
+data_by_years = data_by_years.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
+data_by_years = data_by_years.reset_index()
+stemmed_y, processed_data_y = data_processing(data_by_years)
+
+positive_dict = read_dictionary('./dictionaries/positive.csv'); negative_dict = read_dictionary('./dictionaries/negative.csv')
+ethic_dict = read_dictionary('./dictionaries/ethics.csv'); politic_dict = read_dictionary('./dictionaries/politics.csv')
+econ_dict = read_dictionary('./dictionaries/econ.csv'); military_dict = read_dictionary('./dictionaries/military.csv')
+uncert_dict = read_dictionary('./dictionaries/uncertainty.csv'); passive_dict = read_dictionary('./dictionaries/passive.csv')
+
+#method 1
+method1 = docs_dict_matrix(stemmed_y,positive_dict,negative_dict,ethic_dict,politic_dict,econ_dict,military_dict,uncert_dict,passive_dict )
+
+
+#method2
+dtm = make_count(stemmed_y)
+# or use
+#dtm = make_TF_IDF(stemmed_y)
+
+pos_r = dt_matrix(stemmed_y,positive_dict, dtm)
+neg_r = dt_matrix(stemmed_y,negative_dict,dtm)
+unc_r = dt_matrix(stemmed_y, uncert_dict,dtm)
+pa_r = dt_matrix(stemmed_y, passive_dict,dtm)
+eth_r = dt_matrix(stemmed_y, ethic_dict,dtm)
+pol_r = dt_matrix(stemmed_y, politic_dict,dtm)
+ec_r  = dt_matrix(stemmed_y, econ_dict,dtm)
+mil_r = dt_matrix(stemmed_y, military_dict,dtm)
 
 method2 = np.transpose([pos_r,neg_r, unc_r,pa_r, eth_r, pol_r, ec_r, mil_r ])
 m2 = pd.DataFrame(method2, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit'])
 m2['total'] = m2.sum(axis=1)
 
 method1
+
+
+
+  
