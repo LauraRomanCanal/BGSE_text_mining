@@ -229,7 +229,6 @@ def count_on_dict(sentiment_dictionary, words):
         if word in sentiment_dictionary:
             recognized_word_count += 1
             words_list.append(word)
-
     return recognized_word_count, words_list
 
 def docs_dict_matrix(stem,positive_dict,negative_dict,ethic_dict,politic_dict,econ_dict,military_dict,uncert_dict,passive_dict ):
