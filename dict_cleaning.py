@@ -87,5 +87,5 @@ i68 = list(set(dict6) & set(dict8)  )
 econ_dict = list(set(econ_dict)-set(i67)-set(i68))
 dict6 = set(item for item in econ_dict)
 
-i78 = list(set(dict7) & set(dict8)  )
+i78 = list(set(dict7) & set(dict8) )
 passive_dict = list(set(passive_dict)-set(i78))
