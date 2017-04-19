@@ -1,3 +1,6 @@
+''' method 1'''
+##########################################################################################
+
 def count_on_dict(sentiment_dictionary, words):
     """
     description: calculate counts of a word list based on a dictionary
@@ -36,6 +39,8 @@ def docs_dict_matrix(stem,positive_dict,negative_dict,ethic_dict,politic_dict,ec
 
 method1 = docs_dict_matrix(stemmed_y,positive_dict,negative_dict,ethic_dict,politic_dict,econ_dict,military_dict,uncert_dict,passive_dict )
 
+''' method 2'''
+################################################################################################################################################
 def ranking(stemmed,data,dictionary, use_tf_idf, n):  
 
 
@@ -84,4 +89,3 @@ ec_r  = dt_matrix(stemmed_y, econ_dict)
 mil_r = dt_matrix(stemmed_y, military_dict)
 
 method2 = np.transpose([pos_r,neg_r, unc_r,eth_r, pol_r, ec_r, mil_r ])
-a.sum
