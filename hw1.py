@@ -126,6 +126,20 @@ def custom_stopword_del(stemmed, our_stopwords):
     for i in range(len(stemmed)):
         stemmed[i] = [j.lower() for j in stemmed[i] if j.lower() not in our_stopwords]
     return stemmed
+
+def make_TF_IDF(stemmed):
+    # Calculates TF-IDF matrix
+    vocab = get_vocab(stemmed)
+    D = len(stemmed)
+    idx = dict(zip(vocab,range(len(vocab))))
+    IDF_dict = make_IDF(stemmed,vocab)
+    tf_idf = np.ndarray(shape=(D,len(vocab)))
+
+    for i in range(len(stemmed)):
+        for j in set(stemmed[i]):
+            tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
+    return tf_idf
+
 ###############################################################################
 
 # Read in data
@@ -160,7 +174,6 @@ term_sortfidf = pd.DataFrame(
     {'term': vocab_sidf,
     'tf-idf': sort_tfidf
     })
-
 
 # Remove context-specific stopwords
 our_stopwords = set(vocab_sidf[0:2000])
@@ -276,7 +289,6 @@ ytp['ethic']=100*ytp['ethic']/ytp['total']; ytp['polit']=100*ytp['polit']/ytp['t
 ytp['econ']=100*ytp['econ']/ytp['total']; ytp['milit']=100*ytp['milit']/ytp['total']
 ytp['total']=100; ytp['year'] =data_by_years['year']
 
-
 ''' 
 yearly topics evolution - plots
 '''
@@ -296,9 +308,9 @@ plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 for i in range(len(peak_dates)):
     plt.axvline(peak_dates[i],linestyle="dashed", color="black", lw=0.6)
     plt.text(peak_dates[i],37,peak_text[i],rotation=0)
-plt.ylabel('%')
+plt.ylabel('DT score')
 plt.title('Speeches topics evolution', y=1.08)
-plt.savefig('evolution.png', bbox_inches='tight')
+plt.savefig('./figures/evolution.png', bbox_inches='tight')
 
 #1) UNCERTAINTY: 1805 end of First Barbary War, #end of 1802-1804 recession
 #2) ETHICS: 1811: Slave revolt in Louisiana, – Battle of Tippecanoe: American troops led by William Henry Harrison defeat the Native American chief Tecumseh.
@@ -323,7 +335,7 @@ for i in range(len(peak_dates)):
     plt.text(peak_dates[i],38,peak_text[i],rotation=0)
 plt.ylabel('%')
 plt.title('Speeches topics evolution', y=1.08)
-plt.savefig('1800s.png', bbox_inches='tight')
+plt.savefig('./figures/1800s.png', bbox_inches='tight')
 
 peak_dates = [ 1908,1949,1964]
 peak_text = [5,6,7]
@@ -338,67 +350,45 @@ for i in range(len(peak_dates)):
     plt.text(peak_dates[i],34,peak_text[i],rotation=0)
 plt.ylabel('%')
 plt.title('Speeches topics evolution', y=1.08)
-plt.savefig('1900s.png', bbox_inches='tight')
+plt.savefig('./figures/1900s.png', bbox_inches='tight')
 
 ###############################################################################
-### 2.c) Time series  
+### 2.c) Time serie from 1948 (data available)
+from scipy.stats.stats import pearsonr
+
+uncert= ytp[ytp.year >= 1948].unc.reset_index(drop=True).values; posit= ytp[ytp.year >= 1948].pos.reset_index(drop=True).values
+negat= ytp[ytp.year >= 1948].neg.reset_index(drop=True).values; passive= ytp[ytp.year >= 1948].passive.reset_index(drop=True).values
+econ= ytp[ytp.year >= 1948].econ.reset_index(drop=True).values; polit= ytp[ytp.year >= 1948].polit.reset_index(drop=True).values
+milit= ytp[ytp.year >= 1948].milit.reset_index(drop=True).values
 
 ''' unemployment'''
-# compute correlation between annual unemployment rate and p.e. uncertainty
 file = pd.read_table("./timeseries/annual_unemployment.txt",header=None)
-#file = pd.read_table("./timeseries/jan_unempl.txt",header=None)
-unempl = pd.DataFrame(file[1])
-uncert= ytp[ytp.year >= 1948].unc.reset_index(drop=True); posit= ytp[ytp.year >= 1948].pos.reset_index(drop=True)
-negat= ytp[ytp.year >= 1948].neg.reset_index(drop=True); passive= ytp[ytp.year >= 1948].passive.reset_index(drop=True)
-econ= ytp[ytp.year >= 1948].econ.reset_index(drop=True); polit= ytp[ytp.year >= 1948].polit.reset_index(drop=True)
-milit= ytp[ytp.year >= 1948].milit.reset_index(drop=True)
+#file = pd.read_table("./timeseries/jan_unempl.txt",header=None); unempl = pd.DataFrame(file[1])
+unempl = pd.DataFrame(file[1]); unempl = unempl[1].values
 
-corr_unemployment = pd.DataFrame([unempl.corrwith(uncert),unempl.corrwith(posit),unempl.corrwith(negat),unempl.corrwith(passive),unempl.corrwith(econ),unempl.corrwith(polit),unempl.corrwith(milit)])
-corr_unemployment[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']
-#correlation between unemployment (on Jan) and uncertainty is positive as expected, although weak.
-#if using january data correlation of 0.02 and pval 0.57...
+corr_unempl = [pearsonr(unempl, uncert), pearsonr(unempl, posit),pearsonr(unempl, negat),
+                pearsonr(unempl, passive) ,pearsonr(unempl, econ),pearsonr(unempl, polit),pearsonr(unempl, milit) ] 
+corr_unempl = pd.DataFrame(corr_unempl)
+corr_unempl[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']; corr_unempl.columns = ('unempl corr', 'p-val','topic')
+
 
 '''inflation rate'''
 file2 = pd.read_table("./timeseries/inflation_rate.txt",header=None)
-infl = file2[file2[0]>=1948]
-infl = pd.DataFrame(infl[1])
-#corr_inflation = pd.DataFrame([infl.corrwith(uncert),infl.corrwith(posit),infl.corrwith(negat),infl.corrwith(passive),infl.corrwith(econ),infl.corrwith(polit),infl.corrwith(milit)])
-corr_inflation = pd.DataFrame([infl.corrwith(uncert),infl.corrwith(posit),infl.corrwith(negat),infl.corrwith(passive),infl.corrwith(econ),infl.corrwith(polit),infl.corrwith(milit)])
-corr_inflation[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']
+infl = file2[file2[0]>=1948].reset_index(drop=True); infl = pd.DataFrame(infl[1]); infl = infl[1].values
 
-from scipy.stats.stats import pearsonr
-
-#to get p-values use perasonr()
-uncval = uncert.values
-
-uneval = unempl[1].values
-pearsonr(uneval, uncval) #unemployment - uncertainty
-        
-inflval = infl[1].values
-pearsonr(inflval, uncval) #inflation - uncertainty
-
-# and for the other topics as well
-pp = posit.values; nn = negat.values; pa = passive.values; ec = econ.values; po = polit.values; mi = milit.values
-u_corr_pvals = [pearsonr(uneval, uncval), pearsonr(uneval, pp),pearsonr(uneval, nn),pearsonr(uneval, pa) ,pearsonr(uneval, ec),
-              pearsonr(uneval, po),pearsonr(uneval, mi) ] #nice, same val
-
-i_corr_pvals = [pearsonr(inflval, uncval), pearsonr(inflval, pp),pearsonr(inflval, nn),pearsonr(inflval, pa) ,pearsonr(inflval, ec) ,
-              pearsonr(inflval, po),pearsonr(inflval, mi)] #different values than corrwith() approach!!
+corr_infl = [pearsonr(infl, uncert), pearsonr(infl, posit),pearsonr(infl, negat),
+                pearsonr(infl, passive) ,pearsonr(infl, econ),pearsonr(infl, polit),pearsonr(infl, milit) ] 
+corr_infl = pd.DataFrame(corr_infl)
+corr_infl[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']; corr_infl.columns = ('infl corr', 'p-val','topic')
 
 ### 2.d) topics on years according to tf-idf
 
-from scipy.special import xlogy
-
 ###############################################################################
-def dict_rank(data, dictionary, use_tf_idf, n):  
 
-    stemmed, processed_data = data_processing(data)
+def ranking(stemmed,data,dictionary, use_tf_idf, n):  
     vocab = get_vocab(stemmed)
     dt_matrix = make_count(stemmed)
-    tf_matrix = 1+ xlogy(np.sign(dt_matrix), dt_matrix) / np.log(2)
-    
-    idf = list(make_IDF(stemmed, vocab).values())
-    tfidf_matrix = tf_matrix * idf
+    tfidf_matrix = make_TF_IDF(stemmed)
 
     if (use_tf_idf):
         dtm = tfidf_matrix
@@ -422,34 +412,72 @@ def dict_rank(data, dictionary, use_tf_idf, n):
 
     counter = 0        
     for num in order:
-        #ordered_doc_data_n[counter] = stemmed[num]
         ordered_year_data_n[counter] = data.year[num]
         ordered_sums[counter] = sums[num]
         counter += 1
 
     return list((ordered_year_data_n[0:n], ordered_sums[0:n]))
+
+def tf_idf_dict(stemmed,data,dictionary,n ):
+    
+    sorted_years,tf_score = ranking(stemmed,data, dictionary, False, n) 
+    print ("The highest ranked documents using DTM are:")
+    for i in range(len(sorted_years)):
+        print ("{0} {1}".format(sorted_years[i], tf_score[i]), set(data.loc[data.year == sorted_years[i]].president)) 
+
+    #TF-IDF
+    sorted_years2, tfidf_score = ranking(stemmed,data, dictionary, True, n)  
+    print ("The highest ranked documents using TF-IDF are:")
+    for i in range(len(sorted_years2)):
+        print ("{0} {1}  ".format(sorted_years2[i], tfidf_score[i]), set(data.loc[data.year == sorted_years2[i]].president)) 
+        
+    return 
 ###############################################################################
+from collections import OrderedDict
 
-data= pd.DataFrame(data)
-data_by_years = data.groupby('year', sort=False, as_index=True)['speech'].apply(' '.join)
-df = data_by_years.reset_index()
+####### dt score
+# for a given dictionary
 
-dictionary =positive_dict
-#dictionary =negative_dict
+#tf_idf_dict(stemmed_y,processed_data_y, positive_dict, 10)
 
-# Document term matrix
-sorted_years,tf_score = dict_rank(df, dictionary, False, 10) 
-print ("The highest ranked documents using DTM are:")
-for i in range(len(sorted_years)):
-    #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
-    print ("{0} {1}".format(sorted_years[i], tf_score[i]))
+pos_sorted_years,pos_tf_score = ranking(stemmed_y, processed_data_y, positive_dict, False, 5) 
+neg_sorted_years,neg_tf_score = ranking(stemmed_y, processed_data_y, negative_dict, False, 5) 
+et_sorted_years,et_tf_score = ranking(stemmed_y, processed_data_y, ethic_dict, False, 5) 
+pol_sorted_years,pol_tf_score = ranking(stemmed_y, processed_data_y, politic_dict, False, 5) 
+ec_sorted_years,ec_tf_score = ranking(stemmed_y, processed_data_y, econ_dict, False, 5) 
+mil_sorted_years,mil_tf_score = ranking(stemmed_y, processed_data_y, military_dict, False, 5) 
+unc_sorted_years,unc_tf_score = ranking(stemmed_y, processed_data_y, uncert_dict, False, 5) 
+pas_sorted_years,pas_tf_score = ranking(stemmed_y, processed_data_y, passive_dict, False, 5) 
 
-#TF-IDF
-sorted_year_2, tfidf_score = dict_rank(df, dictionary, True, 10)  
-print ("The highest ranked documents using TF-IDF are:")
-for i in range(len(sorted_year_2)):
-    #print ("{0} {1} {2}".format(scored_docs[i][0].year, scored_docs[i][0].pres, scored_docs[i][1]))
-    print ("{0} {1} ".format(sorted_year_2[i], tfidf_score[i]))
+DT_score = pd.DataFrame(OrderedDict({'year_p':pos_sorted_years, 'positive':pos_tf_score,
+'year_n':neg_sorted_years ,'negative':neg_tf_score, 'y_et':et_sorted_years, 'ethic':et_tf_score, 
+'y_pol':pol_sorted_years, 'politics':pol_tf_score, 'y_ec':ec_sorted_years, 'econ':ec_tf_score, 
+'y_mil':mil_sorted_years, 'military':mil_tf_score, 'y_u':unc_sorted_years, 'uncertainty':unc_tf_score, 'y_pas':pas_sorted_years, 'passive':pas_tf_score} ))
+
+#check with 2b
+ytp.sort(columns='pos',axis=0, ascending=False)['year'][:5]
+ytp.sort(columns='neg',axis=0, ascending=False)['year'][:5]
+ytp.sort(columns='ethic',axis=0, ascending=False)['year'][:5]
+ytp.sort(columns='polit',axis=0, ascending=False)['year'][:5]
+ytp.sort(columns='econ',axis=0, ascending=False)['year'][:5]
+ytp.sort(columns='milit',axis=0, ascending=False)['year'][:5] 
+ytp.sort(columns='unc',axis=0, ascending=False)['year'][:5]
+ytp.sort(columns='passive',axis=0, ascending=False)['year'][:5]
+
+##### tf-idf score
+ipos_sorted_years,ipos_tf_score = ranking(stemmed_y, processed_data_y, positive_dict, True, 10) 
+ineg_sorted_years,ineg_tf_score = ranking(stemmed_y, processed_data_y, negative_dict, True, 10) 
+iet_sorted_years,iet_tf_score = ranking(stemmed_y, processed_data_y, ethic_dict, True, 10) 
+ipol_sorted_years,ipol_tf_score = ranking(stemmed_y, processed_data_y, politic_dict, True, 10) 
+iec_sorted_years,iec_tf_score = ranking(stemmed_y, processed_data_y, econ_dict, True, 10) 
+imil_sorted_years,imil_tf_score = ranking(stemmed_y, processed_data_y, military_dict, True, 10) 
+iunc_sorted_years,iunc_tf_score = ranking(stemmed_y, processed_data_y, uncert_dict, True, 10) 
+ipas_sorted_years,ipas_tf_score = ranking(stemmed_y, processed_data_y, passive_dict, True, 10) 
+
+TFIDF_score = pd.DataFrame(OrderedDict({'year_p':ipos_sorted_years, 'positive':ipos_tf_score,
+'year_n':ineg_sorted_years ,'negative':ineg_tf_score, 'y_et':iet_sorted_years, 'ethic':iet_tf_score, 
+'y_pol':ipol_sorted_years, 'politics':ipol_tf_score, 'y_ec':iec_sorted_years, 'econ':iec_tf_score, 
+'y_mil':imil_sorted_years, 'military':imil_tf_score, 'y_u':iunc_sorted_years, 'uncertainty':iunc_tf_score, 'y_pas':ipas_sorted_years, 'passive':ipas_tf_score} ))
 
 
 '''
@@ -460,21 +488,6 @@ import sklearn
 import scipy
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.sparse.linalg import svds
-###############################################################################
-
-def make_TF_IDF(stemmed):
-    # Calculates TF-IDF matrix
-    vocab = get_vocab(stemmed)
-    D = len(stemmed)
-    idx = dict(zip(vocab,range(len(vocab))))
-    IDF_dict = make_IDF(stemmed,vocab)
-    tf_idf = np.ndarray(shape=(D,len(vocab)))
-
-    for i in range(len(stemmed)):
-        for j in set(stemmed[i]):
-            tf_idf[i,idx[j]] = stemmed[i].count(j)*IDF_dict[j]
-    return tf_idf
-###############################################################################
 
 # Comparison of parties post 1860
 
