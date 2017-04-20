@@ -151,42 +151,36 @@ stemmed, processed_data = data_processing(data)
 
 #tf scores
 
-def custom_stopword_del(stemmed, data):
-    vocab = get_vocab(stemmed)
-    tf_scores = corpus_tf(stemmed)
+vocab = get_vocab(stemmed)
+tf_scores = corpus_tf(stemmed)
 
-    sort_tf = sorted(tf_scores,reverse=True)
-    ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
-    vocab_s = [vocab[i] for i in ind_tf]
+sort_tf = sorted(tf_scores,reverse=True)
+ind_tf = sorted(range(len(tf_scores)), key=lambda k: tf_scores[k],reverse=True)
+vocab_s = [vocab[i] for i in ind_tf]
 
-    term_sorttf = pd.DataFrame(
-        {'term': vocab_s,
-        'tf': sort_tf
-        })
+term_sorttf = pd.DataFrame(
+    {'term': vocab_s,
+    'tf': sort_tf
+    })
 
-    #tf-idf scores
-    tf_idf_scores = corpus_tf_idf(stemmed)
+#tf-idf scores
+tf_idf_scores = corpus_tf_idf(stemmed)
 
-    sort_tfidf = sorted(tf_idf_scores,reverse=True)
-    ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
-    vocab_sidf = [vocab[i] for i in ind_tfidf]
-    #sorted tf_idf
+sort_tfidf = sorted(tf_idf_scores,reverse=True)
+ind_tfidf = sorted(range(len(tf_idf_scores)), key=lambda k: tf_idf_scores[k],reverse=True)
+vocab_sidf = [vocab[i] for i in ind_tfidf]
+#sorted tf_idf
 
-    term_sortfidf = pd.DataFrame(
-        {'term': vocab_sidf,
-        'tf-idf': sort_tfidf
-        })
+term_sortfidf = pd.DataFrame(
+    {'term': vocab_sidf,
+    'tf-idf': sort_tfidf
+    })
 
-
-    # Remove context-specific stopwords
-    our_stopwords = set(vocab_sidf[0:2000])
-    stemmed = custom_stopword_del(stemmed, our_stopwords)
-    stemmed, processed_data = remove_zerolen_strings(stemmed, data)
 
 # Remove context-specific stopwords
 our_stopwords = set(vocab_sidf[0:2000])
 stemmed = custom_stopword_del(stemmed, our_stopwords)
-stemmed, processed_data = remove_zerolen_strings(stemmed, processed_data
+stemmed, processed_data = remove_zerolen_strings(stemmed, data)
 
 '''
  QUESTION 2
@@ -234,7 +228,7 @@ def count_on_dict(sentiment_dictionary, words):
 def docs_dict_matrix(stem,positive_dict,negative_dict,ethic_dict,politic_dict,econ_dict,military_dict,uncert_dict,passive_dict ):
     '''
     description: computes docs-topics matrix with data arranged by year or by docs
-    '''    
+    '''
     counts = np.ndarray(shape=(len(stem),8))
     for j in range(len(stem)):
         words = []
@@ -248,7 +242,7 @@ def docs_dict_matrix(stem,positive_dict,negative_dict,ethic_dict,politic_dict,ec
         counts[j,6] = count_on_dict(econ_dict,words)[0]
         counts[j,7] = count_on_dict(military_dict,words)[0]
         #pos_words = calculate_sentiment_for_word_list(positive_dict,words)[1] # classif words
-    
+
     counts = pd.DataFrame(counts, columns=['pos', 'neg', 'unc', 'passive', 'ethic', 'polit', 'econ', 'milit'])
     counts['total'] = counts.sum(axis=1)
     return counts
@@ -263,7 +257,7 @@ ethic_dict = read_dictionary('./dictionaries/ethics.csv'); politic_dict = read_d
 econ_dict = read_dictionary('./dictionaries/econ.csv'); military_dict = read_dictionary('./dictionaries/military.csv')
 uncert_dict = read_dictionary('./dictionaries/uncertainty.csv'); passive_dict = read_dictionary('./dictionaries/passive.csv')
 
-''' 
+'''
 execute dict_cleaning.py file!!!!!!!!!!!!!!!!
 '''
 
@@ -303,7 +297,7 @@ ytp['econ']=100*ytp['econ']/ytp['total']; ytp['milit']=100*ytp['milit']/ytp['tot
 ytp['total']=100; ytp['year'] =data_by_years['year']
 
 
-''' 
+'''
 yearly topics evolution - plots
 '''
 # whole dataset
@@ -425,7 +419,7 @@ file = pd.read_table("./timeseries/annual_unemployment.txt",header=None)
 unempl = pd.DataFrame(file[1]); unempl = unempl[1].values
 
 corr_unempl = [pearsonr(unempl, uncert), pearsonr(unempl, posit),pearsonr(unempl, negat),
-                pearsonr(unempl, passive) ,pearsonr(unempl, econ),pearsonr(unempl, polit),pearsonr(unempl, milit) ] 
+                pearsonr(unempl, passive) ,pearsonr(unempl, econ),pearsonr(unempl, polit),pearsonr(unempl, milit) ]
 corr_unempl = pd.DataFrame(corr_unempl)
 corr_unempl[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']; corr_unempl.columns = ('unempl corr', 'p-val','topic')
 
@@ -435,7 +429,7 @@ file2 = pd.read_table("./timeseries/inflation_rate.txt",header=None)
 infl = file2[file2[0]>=1948].reset_index(drop=True); infl = pd.DataFrame(infl[1]); infl = infl[1].values
 
 corr_infl = [pearsonr(infl, uncert), pearsonr(infl, posit),pearsonr(infl, negat),
-                pearsonr(infl, passive) ,pearsonr(infl, econ),pearsonr(infl, polit),pearsonr(infl, milit) ] 
+                pearsonr(infl, passive) ,pearsonr(infl, econ),pearsonr(infl, polit),pearsonr(infl, milit) ]
 corr_infl = pd.DataFrame(corr_infl)
 corr_infl[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'politics', 'military']; corr_infl.columns = ('infl corr', 'p-val','topic')
 
@@ -443,7 +437,7 @@ corr_infl[2] = ['uncertainty', 'positive', 'negative', 'passive', 'economy', 'po
 
 ###############################################################################
 
-def ranking(stemmed,data,dictionary, use_tf_idf, n):  
+def ranking(stemmed,data,dictionary, use_tf_idf, n):
     vocab = get_vocab(stemmed)
     dt_matrix = make_count(stemmed)
     tfidf_matrix = make_TF_IDF(stemmed)
@@ -456,7 +450,7 @@ def ranking(stemmed,data,dictionary, use_tf_idf, n):
 # Get rid of words in the document term matrix not in the dictionary
     dict_tokens_set = set(item for item in dictionary)
     intersection = list(set(dict_tokens_set) & set(vocab))
-    vec_positions = [int(token in intersection) for token in vocab] 
+    vec_positions = [int(token in intersection) for token in vocab]
 
 # Get the score of each document
     sums = np.zeros(len(dtm))
@@ -468,7 +462,7 @@ def ranking(stemmed,data,dictionary, use_tf_idf, n):
     ordered_year_data_n = [None] * len(dtm)
     ordered_sums = np.zeros(len(dtm))
 
-    counter = 0        
+    counter = 0
     for num in order:
         ordered_year_data_n[counter] = data.year[num]
         ordered_sums[counter] = sums[num]
@@ -477,19 +471,19 @@ def ranking(stemmed,data,dictionary, use_tf_idf, n):
     return list((ordered_year_data_n[0:n], ordered_sums[0:n]))
 
 def tf_idf_dict(stemmed,data,dictionary,n ):
-    
-    sorted_years,tf_score = ranking(stemmed,data, dictionary, False, n) 
+
+    sorted_years,tf_score = ranking(stemmed,data, dictionary, False, n)
     print ("The highest ranked documents using DTM are:")
     for i in range(len(sorted_years)):
-        print ("{0} {1}".format(sorted_years[i], tf_score[i]), set(data.loc[data.year == sorted_years[i]].president)) 
+        print ("{0} {1}".format(sorted_years[i], tf_score[i]), set(data.loc[data.year == sorted_years[i]].president))
 
     #TF-IDF
-    sorted_years2, tfidf_score = ranking(stemmed,data, dictionary, True, n)  
+    sorted_years2, tfidf_score = ranking(stemmed,data, dictionary, True, n)
     print ("The highest ranked documents using TF-IDF are:")
     for i in range(len(sorted_years2)):
-        print ("{0} {1}  ".format(sorted_years2[i], tfidf_score[i]), set(data.loc[data.year == sorted_years2[i]].president)) 
-        
-    return 
+        print ("{0} {1}  ".format(sorted_years2[i], tfidf_score[i]), set(data.loc[data.year == sorted_years2[i]].president))
+
+    return
 ###############################################################################
 from collections import OrderedDict
 
@@ -498,18 +492,18 @@ from collections import OrderedDict
 
 #tf_idf_dict(stemmed_y,processed_data_y, positive_dict, 10)
 
-pos_sorted_years,pos_tf_score = ranking(stemmed_y, processed_data_y, positive_dict, False, 10) 
-neg_sorted_years,neg_tf_score = ranking(stemmed_y, processed_data_y, negative_dict, False, 10) 
-et_sorted_years,et_tf_score = ranking(stemmed_y, processed_data_y, ethic_dict, False, 10) 
-pol_sorted_years,pol_tf_score = ranking(stemmed_y, processed_data_y, politic_dict, False, 10) 
-ec_sorted_years,ec_tf_score = ranking(stemmed_y, processed_data_y, econ_dict, False, 10) 
-mil_sorted_years,mil_tf_score = ranking(stemmed_y, processed_data_y, military_dict, False, 10) 
-unc_sorted_years,unc_tf_score = ranking(stemmed_y, processed_data_y, uncert_dict, False, 10) 
-pas_sorted_years,pas_tf_score = ranking(stemmed_y, processed_data_y, passive_dict, False, 10) 
+pos_sorted_years,pos_tf_score = ranking(stemmed_y, processed_data_y, positive_dict, False, 10)
+neg_sorted_years,neg_tf_score = ranking(stemmed_y, processed_data_y, negative_dict, False, 10)
+et_sorted_years,et_tf_score = ranking(stemmed_y, processed_data_y, ethic_dict, False, 10)
+pol_sorted_years,pol_tf_score = ranking(stemmed_y, processed_data_y, politic_dict, False, 10)
+ec_sorted_years,ec_tf_score = ranking(stemmed_y, processed_data_y, econ_dict, False, 10)
+mil_sorted_years,mil_tf_score = ranking(stemmed_y, processed_data_y, military_dict, False, 10)
+unc_sorted_years,unc_tf_score = ranking(stemmed_y, processed_data_y, uncert_dict, False, 10)
+pas_sorted_years,pas_tf_score = ranking(stemmed_y, processed_data_y, passive_dict, False, 10)
 
 DT_score = pd.DataFrame(OrderedDict({'year_p':pos_sorted_years, 'positive':pos_tf_score,
-'year_n':neg_sorted_years ,'negative':neg_tf_score, 'y_et':et_sorted_years, 'ethic':et_tf_score, 
-'y_pol':pol_sorted_years, 'politics':pol_tf_score, 'y_ec':ec_sorted_years, 'econ':ec_tf_score, 
+'year_n':neg_sorted_years ,'negative':neg_tf_score, 'y_et':et_sorted_years, 'ethic':et_tf_score,
+'y_pol':pol_sorted_years, 'politics':pol_tf_score, 'y_ec':ec_sorted_years, 'econ':ec_tf_score,
 'y_mil':mil_sorted_years, 'military':mil_tf_score, 'y_u':unc_sorted_years, 'uncertainty':unc_tf_score, 'y_pas':pas_sorted_years, 'passive':pas_tf_score} ))
 
 #check with 2b
@@ -519,24 +513,24 @@ yt.sort(columns='neg',axis=0, ascending=False)['year'][:5]
 yt.sort(columns='ethic',axis=0, ascending=False)['year'][:5]
 yt.sort(columns='polit',axis=0, ascending=False)['year'][:5]
 yt.sort(columns='econ',axis=0, ascending=False)['year'][:5]
-yt.sort(columns='milit',axis=0, ascending=False)['year'][:5] 
+yt.sort(columns='milit',axis=0, ascending=False)['year'][:5]
 yt.sort(columns='unc',axis=0, ascending=False)['year'][:5]
 yt.sort(columns='passive',axis=0, ascending=False)['year'][:5]
 #YAAAAAAAASSSSS WE GET THE SAME
 
 ##### tf-idf score
-ipos_sorted_years,ipos_tf_score = ranking(stemmed_y, processed_data_y, positive_dict, True, 10) 
-ineg_sorted_years,ineg_tf_score = ranking(stemmed_y, processed_data_y, negative_dict, True, 10) 
-iet_sorted_years,iet_tf_score = ranking(stemmed_y, processed_data_y, ethic_dict, True, 10) 
-ipol_sorted_years,ipol_tf_score = ranking(stemmed_y, processed_data_y, politic_dict, True, 10) 
-iec_sorted_years,iec_tf_score = ranking(stemmed_y, processed_data_y, econ_dict, True, 10) 
-imil_sorted_years,imil_tf_score = ranking(stemmed_y, processed_data_y, military_dict, True, 10) 
-iunc_sorted_years,iunc_tf_score = ranking(stemmed_y, processed_data_y, uncert_dict, True, 10) 
-ipas_sorted_years,ipas_tf_score = ranking(stemmed_y, processed_data_y, passive_dict, True, 10) 
+ipos_sorted_years,ipos_tf_score = ranking(stemmed_y, processed_data_y, positive_dict, True, 10)
+ineg_sorted_years,ineg_tf_score = ranking(stemmed_y, processed_data_y, negative_dict, True, 10)
+iet_sorted_years,iet_tf_score = ranking(stemmed_y, processed_data_y, ethic_dict, True, 10)
+ipol_sorted_years,ipol_tf_score = ranking(stemmed_y, processed_data_y, politic_dict, True, 10)
+iec_sorted_years,iec_tf_score = ranking(stemmed_y, processed_data_y, econ_dict, True, 10)
+imil_sorted_years,imil_tf_score = ranking(stemmed_y, processed_data_y, military_dict, True, 10)
+iunc_sorted_years,iunc_tf_score = ranking(stemmed_y, processed_data_y, uncert_dict, True, 10)
+ipas_sorted_years,ipas_tf_score = ranking(stemmed_y, processed_data_y, passive_dict, True, 10)
 
 TFIDF_score = pd.DataFrame(OrderedDict({'year_p':ipos_sorted_years, 'positive':ipos_tf_score,
-'year_n':ineg_sorted_years ,'negative':ineg_tf_score, 'y_et':iet_sorted_years, 'ethic':iet_tf_score, 
-'y_pol':ipol_sorted_years, 'politics':ipol_tf_score, 'y_ec':iec_sorted_years, 'econ':iec_tf_score, 
+'year_n':ineg_sorted_years ,'negative':ineg_tf_score, 'y_et':iet_sorted_years, 'ethic':iet_tf_score,
+'y_pol':ipol_sorted_years, 'politics':ipol_tf_score, 'y_ec':iec_sorted_years, 'econ':iec_tf_score,
 'y_mil':imil_sorted_years, 'military':imil_tf_score, 'y_u':iunc_sorted_years, 'uncertainty':iunc_tf_score, 'y_pas':ipas_sorted_years, 'passive':ipas_tf_score} ))
 
 
