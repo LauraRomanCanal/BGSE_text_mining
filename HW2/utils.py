@@ -19,6 +19,7 @@ from matplotlib import pyplot as plt
 from numpy.linalg import svd
 from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
+from collections import Counter
 
 #os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
@@ -95,17 +96,16 @@ def make_IDF(stemmed,vocab):
     IDF_dict = dict(zip(vocab,IDF))
     return IDF_dict
 
-def make_count(stemmed):
-    vocab = get_vocab(stemmed)
+def make_count(stemmed, idx):
+    from utils import Counter
     D = len(stemmed)
-    n = len(vocab)
-    idx = dict(zip(vocab,range(len(vocab))))
-    count_matrix = np.ndarray(shape=(D,n))
-
-    for i in range(len(stemmed)):
-        for j in set(stemmed[i]):
-            count_matrix[i,idx[j]] = stemmed[i].count(j)
-    return count_matrix
+    V = len(get_vocab(stemmed))
+    X = np.zeros(shape=(D,V))
+    for k in range(D):
+        counts = Counter(stemmed[k])
+        for word in set(stemmed[k]):
+            X[k,idx[word]] = counts[word]
+    return X
 
 def corpus_tf(stemmed):
     # Calculate corpus-level TF scores
