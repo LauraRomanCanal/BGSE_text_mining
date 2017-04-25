@@ -3,13 +3,15 @@ import pandas as pd
 import nltk
 import datetime
 import os
+import scipy.sparse as ssp
 from numpy.random import dirichlet
 from utils import data_processing, get_vocab, make_count
 from collections import Counter
 
 os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
 data = pd.read_table("HW1/speech_data_extend.txt",encoding="utf-8")
-stemmed, processed_data = data_processing(data)
+data_post1950 = data.loc[data.year >= 1950]
+stemmed, processed_data = data_processing(data_post1950)
 
 def Gibbs_sampling_LDA(stemmed, K, alpha, eta, m=5, iters = 200):
     '''
@@ -52,7 +54,7 @@ def Gibbs_sampling_LDA(stemmed, K, alpha, eta, m=5, iters = 200):
 
     def perplexity(Theta, Beta, count_matrix):
         ltb     = np.log(Theta.dot(Beta))
-        num     = np.sum(ltb.multiply(count_matrix))
+        num     = np.sum(count_matrix.multiply(ltb))
         denom   = len(s)
         return np.exp(-num/denom)
 
@@ -63,7 +65,8 @@ def Gibbs_sampling_LDA(stemmed, K, alpha, eta, m=5, iters = 200):
     V       = len(vocab)
     idx     = dict(zip(vocab,range(len(vocab))))
     count_matrix = make_count(stemmed, idx)
-    Output  = []
+    Z_Output  = []
+    Perp   = []
 
     # Initialise params
     Theta   = dirichlet(alpha = [alpha]*K, size = D)
@@ -79,11 +82,15 @@ def Gibbs_sampling_LDA(stemmed, K, alpha, eta, m=5, iters = 200):
 
         # Add every m-th sample to output
         if i%m == 0:
-            Output.append(Z_s)
+            Z_Output.append(Z_s)
+            Perp.append(perplexity(Theta,Beta,count_matrix))
 
-    return Output
+    return (Z_Output, Perp)
 
-z = Gibbs_sampling_LDA(stemmed, K = 10, alpha = 1, eta = 1, m = 5, iters = 10)
+t1 = datetime.datetime.now().time()
+LDA_samples = Gibbs_sampling_LDA(stemmed, K = 10, alpha = 1, eta = 1, m = 3, iters = 1000)
+t2 = datetime.datetime.now().time()
+print((t2.minute - t1.minute)*60 + (t2.second - t1.second) + (t2.microsecond - t1.microsecond)/1e6)
 
 t1 = datetime.datetime.now().time()
 for i in range(10):

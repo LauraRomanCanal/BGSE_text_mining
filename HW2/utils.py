@@ -11,6 +11,7 @@ import numpy as np
 import pickle
 import os
 import nltk
+import scipy.sparse as ssp
 from nltk import tokenize
 from nltk.corpus import stopwords
 from nltk.stem import porter
@@ -97,15 +98,17 @@ def make_IDF(stemmed,vocab):
     return IDF_dict
 
 def make_count(stemmed, idx):
+    # I've made the count matrix a sparse matrix to save memory and speed up perplexity calculation
     from utils import Counter
     D = len(stemmed)
     V = len(get_vocab(stemmed))
-    X = np.zeros(shape=(D,V))
+    X = ssp.lil_matrix((D,V))
     for k in range(D):
         counts = Counter(stemmed[k])
         for word in set(stemmed[k]):
             X[k,idx[word]] = counts[word]
-    return X
+    type(X)
+    return X.tocsr()
 
 def corpus_tf(stemmed):
     # Calculate corpus-level TF scores
