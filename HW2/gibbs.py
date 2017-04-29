@@ -1,11 +1,9 @@
 import numpy as np
 import pandas as pd
 import nltk
-import datetime
 import os
 import scipy.sparse as ssp
 import time
-import LDA
 
 from numpy.random import dirichlet
 from utils import data_processing, get_vocab, make_count
@@ -14,10 +12,10 @@ from collections import Counter
 os.chdir('/home/euan/documents/text-mining/BGSE_text_mining/')
 
 data = pd.read_table("HW1/speech_data_extend.txt",encoding="utf-8")
-data_post1950 = data.loc[data.year >= 1950]
-%time stemmed, processed_data = data_processing(data_post1950)
+data_post1900 = data.loc[data.year >= 1900]
+stemmed, processed_data = data_processing(data_post1900)
 
-def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, perplexity = False):
+def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, burnin = 500, perplexity = False):
     '''
     Gibbs sampler for LDA model
     '''
@@ -98,11 +96,14 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
     labels  = ssp.coo_matrix(onehotencode(Z))
 
     # SAMPLING
-    for i in range(iters):
+    for i in range(burnin):
         Z       = Z_class(Beta, Theta)
         Beta    = Beta_sample(eta, Z)
         Theta   = Theta_sample(alpha, Z)
-
+        if i%20 == 0:
+            if perplexity:
+                perp.append(perplexity(Theta, Beta, count_matrix))
+    for i in range(iters):
         # Add every m-th sample to output
         if i%m == 0:
             labels  += ssp.coo_matrix(onehotencode(Z))
@@ -112,7 +113,11 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
 
     return (labels, perp)
 
-%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 1000, perplexity=True)
+%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 2000, perplexity=True, burnin = 500)
+
+LDA_labels = pd.DataFrame(LDA_labels.toarray())
+LDA_labels = pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=False)
+
 
 ##############################################################
 # Using the lda package
