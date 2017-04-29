@@ -104,6 +104,9 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
             if perplexity:
                 perp.append(perplexity(Theta, Beta, count_matrix))
     for i in range(iters):
+        Z       = Z_class(Beta, Theta)
+        Beta    = Beta_sample(eta, Z)
+        Theta   = Theta_sample(alpha, Z)
         # Add every m-th sample to output
         if i%m == 0:
             labels  += ssp.coo_matrix(onehotencode(Z))
@@ -113,10 +116,14 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
 
     return (labels, perp)
 
-%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 2000, perplexity=True, burnin = 500)
+%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 10, perplexity=True, burnin = 1)
 
 LDA_labels = pd.DataFrame(LDA_labels.toarray())
-LDA_labels = pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=False)
+pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=False)
+
+perp =  pd.DataFrame(perp)
+pd.DataFrame.to_csv(perp,path_or_buf='perp.csv',index=False)
+
 
 
 ##############################################################
