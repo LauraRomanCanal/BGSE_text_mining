@@ -108,7 +108,7 @@ def make_count(stemmed, idx):
         for word in set(stemmed[k]):
             X[k,idx[word]] = counts[word]
     type(X)
-    return X.tocsr()
+    return X.tocsr().astype(int)
 
 def corpus_tf(stemmed):
     # Calculate corpus-level TF scores
