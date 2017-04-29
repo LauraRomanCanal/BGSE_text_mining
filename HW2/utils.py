@@ -102,13 +102,12 @@ def make_count(stemmed, idx):
     from utils import Counter
     D = len(stemmed)
     V = len(get_vocab(stemmed))
-    X = ssp.lil_matrix((D,V))
+    X = np.zeros((D,V))
     for k in range(D):
         counts = Counter(stemmed[k])
         for word in set(stemmed[k]):
             X[k,idx[word]] = counts[word]
-    type(X)
-    return X.tocsr().astype(int)
+    return ssp.csr_matrix(X.astype(int))
 
 def corpus_tf(stemmed):
     # Calculate corpus-level TF scores

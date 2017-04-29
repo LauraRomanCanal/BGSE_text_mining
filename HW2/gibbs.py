@@ -5,6 +5,7 @@ import datetime
 import os
 import scipy.sparse as ssp
 import time
+import LDA
 
 from numpy.random import dirichlet
 from utils import data_processing, get_vocab, make_count
@@ -48,8 +49,6 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
     def Theta_sample(alpha, Z):
         N   = np.zeros(shape=(D,K))
         for i in range(D):
-            #Z_s     = [np.argmax(i) for i in Z[i]]
-            #counts  = Counter(Z_s)
             counts   = Counter(Z[i])
             for j in set(counts.keys()):
                 N[i,j]  = counts[j]
@@ -68,10 +67,15 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
         return(b)
 
     def perplexity(Theta, Beta, count_matrix):
+        '''
+        Calculate perplexity for given sample
+        '''
         ltb     = np.log(Theta.dot(Beta))
         num     = np.sum(count_matrix.multiply(ltb))
         denom   = len(s)
         return np.exp(-num/denom)
+
+    #%time perp = perplexity(Theta,Beta,count_matrix)
 
     # Get params needed for passing to sampling functions
     s       = [i for sublist in stemmed for i in sublist ]
@@ -80,7 +84,6 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
     V       = len(vocab)
     idx     = dict(zip(vocab,range(len(vocab))))
     count_matrix = make_count(stemmed, idx)
-    labels  = []
     perp   = []
 
     # Initialise params
@@ -93,7 +96,6 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
     Beta    = dirichlet(alpha = [eta]*V, size = K)
     Z       = Z_class(Beta, Theta)
     labels  = ssp.coo_matrix(onehotencode(Z))
-    perp    = []
 
     # SAMPLING
     for i in range(iters):
@@ -104,16 +106,13 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, p
         # Add every m-th sample to output
         if i%m == 0:
             labels  += ssp.coo_matrix(onehotencode(Z))
-        if i%10 == 0:
+        if i%20 == 0:
             if perplexity:
                 perp.append(perplexity(Theta, Beta, count_matrix))
 
     return (labels, perp)
 
-%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 100)
-K = 10
-
-print('DONE')
+%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 1000, perplexity=True)
 
 ##############################################################
 # Using the lda package
@@ -121,7 +120,8 @@ print('DONE')
 
 import lda
 
-X = make_count(stemmed, idx = dict(zip(get_vocab(stemmed),range(len(get_vocab(stemmed))))))
-X = X.astype(int)
+idx = dict(zip(get_vocab(stemmed),range(len(get_vocab(stemmed)))))
+X   = make_count(stemmed, idx)
+X   = X.astype(int)
 model = lda.LDA(n_topics= 10, n_iter=1000)
 %time model.fit(X)
