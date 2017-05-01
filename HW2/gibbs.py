@@ -4,6 +4,8 @@ import nltk
 import os
 import scipy.sparse as ssp
 import time
+import matplotlib
+%matplotlib inline
 from numpy.random import dirichlet
 from utils import data_processing, get_vocab, make_count
 from collections import Counter
@@ -18,15 +20,6 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
     '''
     Gibbs sampler for LDA model
     '''
-
-    #def Z_probs(Beta, Theta):
-    #    denoms = Theta.dot(Beta)
-    #    Z = [ [Theta[i,:]*Beta[:,idx[word]]/denoms[i,idx[word]] for word in stemmed[i] ] for i in range(Theta.shape[0])]
-    #    return Z
-
-    #def Z_class(Beta, Theta):
-    #    Z = [[ np.argmax(Theta[i,:]*Beta[:,idx[word]]) for word in stemmed[i] ] for i in range(Theta.shape[0])]
-    #    return Z
 
     def Z_class_1(Beta, Theta):
         Z = [np.ndarray.tolist( np.argmax( Beta[:,[idx[word] for word in stemmed[i]]] * Theta[i,:].reshape((K, 1)), axis = 0) ) for i in range(Theta.shape[0] )]
@@ -119,16 +112,14 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
 
     return (labels, perp)
 
-%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 2000, perplexity=True, burnin = 500)
+%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 2000, perplexity=True, burnin = 1000)
 
 LDA_labels = pd.DataFrame(LDA_labels.toarray())
-pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=False)
+LDA_labels.index = [i for sublist in stemmed for i in sublist ]
+pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=True)
 
 perp =  pd.DataFrame(perp)
 pd.DataFrame.to_csv(perp,path_or_buf='perp.csv',index=False)
-
-from matplotlib import pyplot as plt
-plt.plot(perp)
 
 
 ##############################################################
@@ -136,9 +127,10 @@ plt.plot(perp)
 ##############################################################
 
 import lda
+from matplotlib import pyplot as plt
 
 idx = dict(zip(get_vocab(stemmed),range(len(get_vocab(stemmed)))))
 X   = make_count(stemmed, idx)
 X   = X.astype(int)
-model = lda.LDA(n_topics= 10, n_iter=2500)
+model = lda.LDA(n_topics= 10, n_iter=2500, alpha = 200/len(get_vocab(stemmed)), eta = 50/10)
 %time model.fit(X)

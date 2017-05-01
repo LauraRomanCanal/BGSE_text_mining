@@ -30,6 +30,7 @@ def my_tokeniser(speeches):
     # Tokenize speeches
     tokenizer = RegexpTokenizer(r'\w+')
     sp_tkn = [tokenizer.tokenize(speech) for speech in speeches]
+    sp_tkn = [[word.lower() for word in speech] for speech in sp_tkn]
     return sp_tkn
 
 def remove_nonalph(sp_tkn):
@@ -70,6 +71,16 @@ def data_processing(data):
     stemmed, data = remove_zerolen_strings(stemmed, data)
     #return [stemmed, data] doesn't work to me
     return (stemmed, data)
+
+def data_processing_no_stop_stem(data):
+    '''
+    Put together all steps in data processing. NOTE data must have column 'speech'
+    '''
+    speeches = data.speech
+    sp_tkn = my_tokeniser(speeches)
+    sp_tkn = remove_nonalph(sp_tkn)
+    return (sp_tkn)
+
 ###############################################################################
 
 # CALCULATING TF-IDF SCORES
