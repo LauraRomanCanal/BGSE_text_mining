@@ -5,12 +5,13 @@ import os
 import scipy.sparse as ssp
 import time
 import matplotlib
-%matplotlib inline
 from numpy.random import dirichlet
-from utils import data_processing, get_vocab, make_count
 from collections import Counter
 
 os.chdir('/home/euan/documents/text-mining/BGSE_text_mining/')
+from utils import data_processing, get_vocab, make_count
+
+%matplotlib inline
 
 data = pd.read_table("HW1/speech_data_extend.txt",encoding="utf-8")
 data_post1945 = data.loc[data.year >= 1945]
@@ -22,7 +23,12 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
     '''
 
     def Z_class_1(Beta, Theta):
-        Z = [np.ndarray.tolist( np.argmax( Beta[:,[idx[word] for word in stemmed[i]]] * Theta[i,:].reshape((K, 1)), axis = 0) ) for i in range(Theta.shape[0] )]
+        Z = [np.ndarray.tolist( np.argmax( Beta[:,[idx[word] for word in stemmed[i]]] * \
+        Theta[i,:].reshape((K, 1)), axis = 0) ) for i in range(Theta.shape[0] )]
+        return Z
+
+    def Z_class(Beta, Theta):
+        Z = [[ np.argmax(Theta[i,:]*Beta[:,idx[word]]) for word in stemmed[i] ] for i in range(Theta.shape[0])]
         return Z
 
     #%time Z = Z_class(Beta, Theta)
@@ -134,3 +140,13 @@ X   = make_count(stemmed, idx)
 X   = X.astype(int)
 model = lda.LDA(n_topics= 10, n_iter=2500, alpha = 200/len(get_vocab(stemmed)), eta = 50/10)
 %time model.fit(X)
+
+#############################################################
+# Load in data for description of output
+#############################################################
+
+perplexity = pd.read_csv('perp.csv')
+labels = pd.read_csv('LDA_labels.csv')
+labels.columns
+
+pd.DataFrame.idxmax(labels.drop('Unnamed: 0'))
