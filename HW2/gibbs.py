@@ -123,19 +123,18 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 20
 LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, n_samples = 100,
                                             perplexity=True, burnin = 1000)
 
-LDA_labels = pd.DataFrame(LDA_labels.astype(int))
-LDA_labels.index = [i for sublist in stemmed for i in sublist ]
-pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=True)
-
-perp =  pd.DataFrame(perp)
-pd.DataFrame.to_csv(perp,path_or_buf='perp.csv',index=False)
-
 doc_label = [[i]*len(stemmed[i]) for i in range(len(stemmed))]
 doc_label = [i for sublist in doc_label for i in sublist]
-K = 10
+labels = LDA_labels[0]
 
 def dt_matrix(labels, doc_label):
-    D = len(set(doc_label))
     dt = np.zeros((len(set(doc_label)), K))
+    label_dict = dict(zip(range(labels.shape[0]), labels))
+    doc_dict = dict(zip(range(len(doc_label)), doc_label))
     for i in range(len(doc_label)):
-        labels[doc_label[i], ]
+        dt[doc_dict[i], label_dict[i]] += 1
+    return dt
+
+labels = LDA_labels[0]
+
+%time dt1 = dt_matrix(labels, doc_label)
