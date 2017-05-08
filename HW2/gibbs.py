@@ -2,22 +2,28 @@ import numpy as np
 import pandas as pd
 import nltk
 import os
+import sys
 import scipy.sparse as ssp
 import time
 import matplotlib
+import tqdm
+from tqdm import tqdm
 from numpy.random import dirichlet
 from collections import Counter
+from utils import data_processing, get_vocab, make_count
 
-os.chdir('/home/euan/documents/text-mining/BGSE_text_mining/')
+
+os.chdir('/home/euan/documents/text-mining/BGSE_text_mining/HW2')
+sys.path.append(os.getcwd())
 from utils import data_processing, get_vocab, make_count
 
 %matplotlib inline
 
-data = pd.read_table("HW1/speech_data_extend.txt",encoding="utf-8")
+data = pd.read_table("../HW1/speech_data_extend.txt",encoding="utf-8")
 data_post1945 = data.loc[data.year >= 1945]
 %time stemmed, processed_data = data_processing(data_post1945)
 
-def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, burnin = 500, perplexity = False):
+def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 200, burnin = 500, perplexity = False):
     '''
     Gibbs sampler for LDA model
     '''
@@ -26,12 +32,6 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
         Z = [np.ndarray.tolist( np.argmax( Beta[:,[idx[word] for word in stemmed[i]]] * \
         Theta[i,:].reshape((K, 1)), axis = 0) ) for i in range(Theta.shape[0] )]
         return Z
-
-    def Z_class(Beta, Theta):
-        Z = [[ np.argmax(Theta[i,:]*Beta[:,idx[word]]) for word in stemmed[i] ] for i in range(Theta.shape[0])]
-        return Z
-
-    #%time Z = Z_class(Beta, Theta)
 
     def Beta_sample(eta, Z):
         z_s = [z for sublist in Z for z in sublist ]
@@ -89,7 +89,7 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
     Theta   = dirichlet(alpha = [alpha]*K, size = D)
     Beta    = dirichlet(alpha = [eta]*V, size = K)
     Z       = Z_class_1(Beta, Theta)
-    labels  = ssp.coo_matrix(onehotencode(Z))
+    labels  = np.zeros((n_samples, len(s)))
 
     # SAMPLING
     print('TIME:', time.strftime("%H:%M:%S", time.gmtime()))
@@ -103,14 +103,16 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
             print('Burnin iteration {}'.format(i))
 
     print('TIME:', time.strftime("%H:%M:%S", time.gmtime()))
-    for i in range(iters):
+    for i in range(m*n_samples):
         Z       = Z_class_1(Beta, Theta)
         Beta    = Beta_sample(eta, Z)
         Theta   = Theta_sample(alpha, Z)
 
         # Add every m-th sample to output
         if i%m == 0:
-            labels  += ssp.coo_matrix(onehotencode(Z))
+            Z_s = [i for sublist in Z for i in sublist ]
+            j = np.int(i/m)
+            labels[j, :] = Z_s
         if i%20 == 0:
             if perplexity:
                 perp.append(perplexity(Theta, Beta, count_matrix))
@@ -118,35 +120,22 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, iters = 200, b
 
     return (labels, perp)
 
-%time LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, iters = 2000, perplexity=True, burnin = 1000)
+LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, n_samples = 100,
+                                            perplexity=True, burnin = 1000)
 
-LDA_labels = pd.DataFrame(LDA_labels.toarray())
+LDA_labels = pd.DataFrame(LDA_labels.astype(int))
 LDA_labels.index = [i for sublist in stemmed for i in sublist ]
 pd.DataFrame.to_csv(LDA_labels,path_or_buf='LDA_labels.csv',index=True)
 
 perp =  pd.DataFrame(perp)
 pd.DataFrame.to_csv(perp,path_or_buf='perp.csv',index=False)
 
+doc_label = [[i]*len(stemmed[i]) for i in range(len(stemmed))]
+doc_label = [i for sublist in doc_label for i in sublist]
+K = 10
 
-##############################################################
-# Using the lda package
-##############################################################
-
-import lda
-from matplotlib import pyplot as plt
-
-idx = dict(zip(get_vocab(stemmed),range(len(get_vocab(stemmed)))))
-X   = make_count(stemmed, idx)
-X   = X.astype(int)
-model = lda.LDA(n_topics= 10, n_iter=2500, alpha = 200/len(get_vocab(stemmed)), eta = 50/10)
-%time model.fit(X)
-
-#############################################################
-# Load in data for description of output
-#############################################################
-
-perplexity = pd.read_csv('perp.csv')
-labels = pd.read_csv('LDA_labels.csv')
-labels.columns
-
-pd.DataFrame.idxmax(labels.drop('Unnamed: 0'))
+def dt_matrix(labels, doc_label):
+    D = len(set(doc_label))
+    dt = np.zeros((len(set(doc_label)), K))
+    for i in range(len(doc_label)):
+        labels[doc_label[i], ]
