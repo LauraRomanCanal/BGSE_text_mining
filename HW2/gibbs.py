@@ -8,7 +8,7 @@ import time
 import matplotlib
 import tqdm
 from tqdm import tqdm
-from numpy.random import dirichlet
+from numpy.random import dirichlet, multinomial
 from collections import Counter
 from utils import data_processing, get_vocab, make_count
 
@@ -16,8 +16,6 @@ from utils import data_processing, get_vocab, make_count
 os.chdir('/home/euan/documents/text-mining/BGSE_text_mining/HW2')
 sys.path.append(os.getcwd())
 from utils import data_processing, get_vocab, make_count
-
-%matplotlib inline
 
 data = pd.read_table("../HW1/speech_data_extend.txt",encoding="utf-8")
 data_post1945 = data.loc[data.year >= 1945]
@@ -31,6 +29,16 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 20
     def Z_class_1(Beta, Theta):
         Z = [np.ndarray.tolist( np.argmax( Beta[:,[idx[word] for word in stemmed[i]]] * \
         Theta[i,:].reshape((K, 1)), axis = 0) ) for i in range(Theta.shape[0] )]
+        return Z
+
+    def Z_sample(Beta, Theta, Theta_x_Beta):
+        denom = Theta_x_Beta
+        Z = [0] * len(stemmed)
+        for i in range(len(stemmed)):
+            sel = [idx[word] for word in stemmed[i]]
+            prod = Beta[:,sel].T * Theta[i,:].reshape((1,K))
+            probs = prod / denom[i,sel].reshape(len(stemmed[i]),1)
+            Z[i] = [np.argmax(multinomial(n=1, pvals = z, size = 1)[0]) for z in probs]
         return Z
 
     def Beta_sample(eta, Z):
@@ -53,20 +61,11 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 20
         Theta = [dirichlet(alpha = alpha + N[i],size = 1)[0] for i in range(D)]
         return np.array(Theta)
 
-    def onehotencode(Z):
-        '''
-        Create function to one-hot encode topic allocation
-        '''
-        a       = np.array([i for sublist in Z for i in sublist ])
-        b       = np.zeros((a.size, a.max()+1))
-        b[np.arange(a.size),a] = 1
-        return(b)
-
-    def perplexity(Theta, Beta, count_matrix):
+    def perplexity(Theta_x_Beta, count_matrix):
         '''
         Calculate perplexity for given sample
         '''
-        ltb     = np.log(Theta.dot(Beta))
+        ltb     = np.log(Theta_x_Beta)
         num     = np.sum(count_matrix.multiply(ltb))
         denom   = len(s)
         return np.exp(-num/denom)
@@ -88,25 +87,28 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 20
 
     Theta   = dirichlet(alpha = [alpha]*K, size = D)
     Beta    = dirichlet(alpha = [eta]*V, size = K)
-    Z       = Z_class_1(Beta, Theta)
+    Theta_x_Beta = Theta.dot(Beta)
+    Z       = Z_sample(Beta, Theta, Theta_x_Beta)
     labels  = np.zeros((n_samples, len(s)))
 
     # SAMPLING
     print('TIME:', time.strftime("%H:%M:%S", time.gmtime()))
     for i in range(burnin):
-        Z       = Z_class_1(Beta, Theta)
+        Z       = Z_sample(Beta, Theta, Theta_x_Beta)
         Beta    = Beta_sample(eta, Z)
         Theta   = Theta_sample(alpha, Z)
+        Theta_x_Beta = Theta.dot(Beta)
         if i%20 == 0:
             if perplexity:
-                perp.append(perplexity(Theta, Beta, count_matrix))
+                perp.append(perplexity(Theta_x_Beta, count_matrix))
             print('Burnin iteration {}'.format(i))
 
     print('TIME:', time.strftime("%H:%M:%S", time.gmtime()))
     for i in range(m*n_samples):
-        Z       = Z_class_1(Beta, Theta)
+        Z       = Z_sample(Beta, Theta, Theta_x_Beta)
         Beta    = Beta_sample(eta, Z)
         Theta   = Theta_sample(alpha, Z)
+        Theta_x_Beta = Theta.dot(Beta)
 
         # Add every m-th sample to output
         if i%m == 0:
@@ -115,13 +117,19 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 20
             labels[j, :] = Z_s
         if i%20 == 0:
             if perplexity:
-                perp.append(perplexity(Theta, Beta, count_matrix))
+                perp.append(perplexity(Theta_x_Beta, count_matrix))
             print( "Iteration {}".format(i))
 
     return (labels, perp)
 
-LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10, n_samples = 100,
+LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10,m=5, n_samples = 100,
                                             perplexity=True, burnin = 1000)
+
+LDA_labels.tofile('/home/euan/LDA_labels.npy')
+pd.DataFrame(perp).to_csv('/home/euan/perplexity.csv')
+from matplotlib import pyplot as plt
+plt.plot(perp)
+plt.show()
 
 doc_label = [[i]*len(stemmed[i]) for i in range(len(stemmed))]
 doc_label = [i for sublist in doc_label for i in sublist]
@@ -129,12 +137,25 @@ labels = LDA_labels[0]
 
 def dt_matrix(labels, doc_label):
     dt = np.zeros((len(set(doc_label)), K))
-    label_dict = dict(zip(range(labels.shape[0]), labels))
+    label_dict = dict(zip(range(labels.shape[0]), labels.astype(int)))
     doc_dict = dict(zip(range(len(doc_label)), doc_label))
     for i in range(len(doc_label)):
         dt[doc_dict[i], label_dict[i]] += 1
     return dt
 
-labels = LDA_labels[0]
+dt = dt_matrix(labels, doc_label)
 
-%time dt1 = dt_matrix(labels, doc_label)
+dt_avg = np.zeros((len(stemmed), 10))
+for i in np.arange(0,100, 10 ):
+    dt_avg += dt_matrix(LDA_labels[i], doc_label)
+dt_avg /= 10
+
+nmz = dt
+nm = np.array([len(doc) for doc in stemmed]).reshape(10252,1)
+
+theta_uncollapsed = (nmz + alpha) / (nm + K * alpha)
+
+np.sum(theta_uncollapsed[0])
+
+theta_uncollapsed = pd.DataFrame(theta_uncollapsed)
+theta_uncollapsed.to_csv('~/theta_uncollapsed.csv')
