@@ -22,9 +22,8 @@ from scipy.misc import logsumexp
 from nltk.tokenize import RegexpTokenizer
 from collections import Counter
 
-#os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
+#os.chdir('/Users/Laura/Desktop/BGSE_text_mining-master/HW1')
 #os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
-
 #PRE-PROCESSING DATA
 #############################################################################
 def my_tokeniser(speeches):
