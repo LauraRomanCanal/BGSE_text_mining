@@ -46,9 +46,9 @@ preds = model.predict(X_test)
 accuracy_score(y_test, preds)
 confusion_matrix(y_test, preds)
 
-################
+######################
 # Ridge
-################
+######################
 
 model = LogisticRegression(penalty = 'l2')
 
