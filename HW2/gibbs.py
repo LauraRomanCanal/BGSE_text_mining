@@ -122,8 +122,7 @@ def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 20
 
     return (labels, perp)
 
-LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10,m=5, n_samples = 100,
-                                            perplexity=True, burnin = 1000)
+LDA_labels, perp = Gibbs_sampling_LDA(stemmed, K = 10,m=5, n_samples = 100, perplexity=True, burnin = 1000)
 
 LDA_labels.tofile('/home/euan/LDA_labels.npy')
 pd.DataFrame(perp).to_csv('/home/euan/perplexity.csv')
@@ -159,3 +158,41 @@ np.sum(theta_uncollapsed[0])
 
 theta_uncollapsed = pd.DataFrame(theta_uncollapsed)
 theta_uncollapsed.to_csv('~/theta_uncollapsed.csv')
+
+eta = 200/V
+alpha = 50/K
+
+betas = np.zeros(shape=(K,V))
+for i in range(K):
+    beta = np.random.uniform(0,1,V)
+    beta = beta/np.sum(beta)
+    betas[i,:] = beta
+
+thetas = np.zeros(shape=(D,K))
+for i in range(D):
+    theta = np.random.uniform(0,1,K)
+    theta = theta/np.sum(theta)
+    thetas[i,:] = theta
+
+Z = np.zeros(shape=(D,V))
+
+Z = [0] * len(s)
+
+def Z_sample(Beta, Theta, Theta_x_Beta):
+    denom = Theta_x_Beta
+    Z = [0] * len(stemmed)
+    for i in range(len(stemmed)):
+        sel = [idx[word] for word in stemmed[i]]
+        prod = Beta[:,sel].T * Theta[i,:].reshape((1,K))
+        probs = prod / denom[i,sel].reshape(len(stemmed[i]),1)
+        Z[i] = [np.argmax(multinomial(n=1, pvals = z, size = 1)[0]) for z in probs]
+    return Z
+
+%time Z = Z_sample(betas, thetas, thetas.dot(betas))
+
+den =  np.dot(thetas, betas)
+Z=[]
+for i in range(D):
+    for j in range(V):
+        z_dn = [(thetas[i,k]*betas[k,j])/den[i,j] for k in range(K)]
+        Z.append(z_dn)
