@@ -25,7 +25,7 @@ from collections import Counter
 #os.chdir('/Users/Laura/Desktop/text_mining_hw1/try3')
 os.chdir('/home/euan/documents/text-mining/BGSE_text_mining')
 #PRE-PROCESSING DATA
-###############################################################################
+#############################################################################
 def my_tokeniser(speeches):
     # Tokenize speeches
     tokenizer = RegexpTokenizer(r'\w+')
