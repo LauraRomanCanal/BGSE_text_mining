@@ -22,7 +22,7 @@ from matplotlib import pyplot
 
 import topicmodels
 
-#2.1 collapsed gibbs sampling perplexity vs. uncollapsed perplexity
+#2.1 collapsed gibbs sampling perplexity vs. uncollapsed perplexity.
 
 os.chdir('/Users/Laura/Desktop/text_mining_hw2/ex1')
 from utils import data_processing, get_vocab, make_count
