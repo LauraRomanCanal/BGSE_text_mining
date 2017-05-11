@@ -23,7 +23,7 @@ data_post1945 = data.loc[data.year >= 1945]
 
 def Gibbs_sampling_LDA(stemmed, K, alpha = None, eta = None, m=3, n_samples = 200, burnin = 500, perplexity = False):
     '''
-    Gibbs sampler for LDA model
+    Gibbs sampler for LDA model.
     '''
 
     def Z_class_1(Beta, Theta):
